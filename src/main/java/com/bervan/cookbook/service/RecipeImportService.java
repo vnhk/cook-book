@@ -1,0 +1,93 @@
+package com.bervan.cookbook.service;
+
+import com.bervan.cookbook.model.*;
+import com.bervan.cookbook.scraper.RecipeScraperStrategy;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+public class RecipeImportService {
+    private final List<RecipeScraperStrategy> scraperStrategies;
+    private final IngredientNormalizationEngine normalizationEngine;
+    private final UnitConversionEngine unitConversionEngine;
+    private final RecipeService recipeService;
+    private final IngredientService ingredientService;
+
+    public RecipeImportService(List<RecipeScraperStrategy> scraperStrategies,
+                               IngredientNormalizationEngine normalizationEngine,
+                               UnitConversionEngine unitConversionEngine,
+                               RecipeService recipeService,
+                               IngredientService ingredientService) {
+        this.scraperStrategies = scraperStrategies != null ? scraperStrategies : Collections.emptyList();
+        this.normalizationEngine = normalizationEngine;
+        this.unitConversionEngine = unitConversionEngine;
+        this.recipeService = recipeService;
+        this.ingredientService = ingredientService;
+    }
+
+    public Optional<RecipeScraperStrategy> findStrategy(String url) {
+        return scraperStrategies.stream()
+                .filter(s -> s.supports(url))
+                .findFirst();
+    }
+
+    public ScrapedRecipeData scrapePreview(String url) {
+        RecipeScraperStrategy strategy = findStrategy(url)
+                .orElseThrow(() -> new IllegalArgumentException("No scraper strategy found for URL: " + url));
+        return strategy.scrape(url);
+    }
+
+    public Recipe importFromScraped(ScrapedRecipeData data) {
+        Recipe recipe = new Recipe();
+        recipe.setId(UUID.randomUUID());
+        recipe.setName(data.getName());
+        recipe.setDescription(data.getDescription());
+
+        // Sanitize HTML instruction - allow images and basic formatting
+        if (data.getInstructionHtml() != null) {
+            Safelist safelist = Safelist.relaxed().addTags("img")
+                    .addAttributes("img", "src", "alt", "width", "height");
+            recipe.setInstruction(Jsoup.clean(data.getInstructionHtml(), safelist));
+        }
+
+        recipe.setPrepTime(data.getPrepTime());
+        recipe.setCookTime(data.getCookTime());
+        recipe.setServings(data.getServings());
+        recipe.setTotalCalories(data.getTotalCalories());
+        recipe.setTags(data.getTags());
+        recipe.setRequiredEquipment(data.getRequiredEquipment());
+        recipe.setSourceUrl(data.getSourceUrl());
+
+        Set<RecipeIngredient> recipeIngredients = new HashSet<>();
+
+        if (data.getIngredientLines() != null) {
+            for (ScrapedRecipeData.ScrapedIngredientLine line : data.getIngredientLines()) {
+                RecipeIngredient ri = new RecipeIngredient();
+                ri.setId(UUID.randomUUID());
+                ri.setRecipe(recipe);
+                ri.setOriginalText(line.getOriginalText());
+                ri.setQuantity(line.getQuantity());
+                ri.setOptional(false);
+
+                // Parse unit
+                CulinaryUnit unit = unitConversionEngine.parseUnit(line.getUnitText());
+                ri.setUnit(unit);
+
+                // Normalize ingredient
+                String ingredientText = line.getIngredientText();
+                if (ingredientText != null && !ingredientText.isBlank()) {
+                    Ingredient ingredient = normalizationEngine.normalize(ingredientText)
+                            .orElseGet(() -> ingredientService.findOrCreateByName(ingredientText));
+                    ri.setIngredient(ingredient);
+                    recipeIngredients.add(ri);
+                }
+            }
+        }
+
+        recipe.setRecipeIngredients(recipeIngredients);
+        return recipeService.save(recipe);
+    }
+}

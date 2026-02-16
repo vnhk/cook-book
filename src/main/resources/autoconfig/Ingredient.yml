@@ -1,0 +1,19 @@
+columns:
+  - field: name
+    displayName: "Name"
+    internalNameField: "Ingredient_name_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: true
+    min: 1
+    max: 200
+
+  - field: category
+    displayName: "Category"
+    internalNameField: "Ingredient_category_columnName"
+    strValues: [ "Nabiał", "Mięso", "Ryby", "Warzywa", "Owoce", "Przyprawy", "Zboża", "Tłuszcze", "Napoje", "Słodycze", "Inne" ]
+    defaultValue: "Inne"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true

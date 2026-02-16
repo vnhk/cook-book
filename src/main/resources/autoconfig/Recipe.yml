@@ -1,0 +1,82 @@
+columns:
+  - field: name
+    displayName: "Name"
+    internalNameField: "Recipe_name_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: true
+    min: 2
+    max: 300
+
+  - field: description
+    displayName: "Description"
+    internalNameField: "Recipe_description_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: false
+
+  - field: prepTime
+    displayName: "Prep Time (min)"
+    internalNameField: "Recipe_prepTime_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+
+  - field: cookTime
+    displayName: "Cook Time (min)"
+    internalNameField: "Recipe_cookTime_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+
+  - field: totalTime
+    displayName: "Total Time (min)"
+    internalNameField: "Recipe_totalTime_columnName"
+    inSaveForm: false
+    inEditForm: false
+    inTable: true
+
+  - field: servings
+    displayName: "Servings"
+    internalNameField: "Recipe_servings_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+
+  - field: totalCalories
+    displayName: "Calories"
+    internalNameField: "Recipe_totalCalories_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+
+  - field: averageRating
+    displayName: "Rating"
+    internalNameField: "Recipe_averageRating_columnName"
+    inSaveForm: false
+    inEditForm: false
+    inTable: true
+
+  - field: tags
+    displayName: "Tags"
+    internalNameField: "Recipe_tags_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: false
+    max: 500
+
+  - field: requiredEquipment
+    displayName: "Equipment"
+    internalNameField: "Recipe_requiredEquipment_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: false
+    max: 500
+
+  - field: favorite
+    displayName: "Favorite"
+    internalNameField: "Recipe_favorite_columnName"
+    inSaveForm: false
+    inEditForm: false
+    inTable: true
