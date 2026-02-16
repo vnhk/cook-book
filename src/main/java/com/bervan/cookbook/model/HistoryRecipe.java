@@ -50,7 +50,6 @@ public class HistoryRecipe extends BervanHistoryOwnedEntity<UUID> implements Per
     @HistoryField
     private Integer totalCalories;
 
-    @HistoryField
     private String tags;
 
     @HistoryField

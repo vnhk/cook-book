@@ -20,6 +20,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @CssImport("./bervan-cookbook.css")
@@ -33,6 +35,14 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
         super(new CookBookPageLayout(ROUTE_NAME, AbstractRecipeDetailView.ROUTE_NAME),
                 service, bervanViewConfig, Recipe.class);
         this.recipeImportService = recipeImportService;
+
+        List<String> allTags = new ArrayList<>();
+        try {
+            allTags = service.loadAllTags();
+        } catch (Exception ignored) {
+        }
+        componentHelper = new RecipeComponentHelper(allTags);
+
         renderCommonComponents();
     }
 

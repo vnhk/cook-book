@@ -121,22 +121,11 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         headerContent.add(nameField, favoriteIcon);
         headerCard.add(headerContent);
 
-        // Tags (inline editable)
-        InlineEditableField tagsField = new InlineEditableField(
-                "Tags", recipe.getTags(), InlineEditableField.FieldType.TEXT,
-                val -> {
-                    recipe.setTags(val != null ? val.toString() : null);
-                    recipeService.save(recipe);
-                    init(recipe.getId().toString());
-                }
-        );
-        headerCard.add(tagsField);
-
-        // Display tags as chips (read-only visual)
-        if (recipe.getTags() != null && !recipe.getTags().isBlank()) {
+        // Display tags as chips
+        if (recipe.getTags() != null && !recipe.getTags().isEmpty()) {
             HorizontalLayout tagsRow = new HorizontalLayout();
             tagsRow.getStyle().set("flex-wrap", "wrap").set("gap", "4px");
-            for (String tag : recipe.getTags().split(",")) {
+            for (String tag : recipe.getTags()) {
                 Span chip = new Span(tag.trim());
                 chip.addClassName("tag-chip");
                 tagsRow.add(chip);

@@ -57,7 +57,12 @@ public class RecipeImportService {
         recipe.setCookTime(data.getCookTime());
         recipe.setServings(data.getServings());
         recipe.setTotalCalories(data.getTotalCalories());
-        recipe.setTags(data.getTags());
+        if (data.getTags() != null && !data.getTags().isBlank()) {
+            recipe.setTags(Arrays.stream(data.getTags().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList());
+        }
         recipe.setRequiredEquipment(data.getRequiredEquipment());
         recipe.setSourceUrl(data.getSourceUrl());
 

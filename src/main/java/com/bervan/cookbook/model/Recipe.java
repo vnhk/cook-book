@@ -9,7 +9,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -54,8 +56,10 @@ public class Recipe extends BervanOwnedBaseEntity<UUID> implements PersistableTa
     private Integer ratingCount;
     private Boolean favorite;
 
-    @Size(max = 500)
-    private String tags;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "recipe_tags", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
 
     @Size(max = 500)
     private String requiredEquipment;
@@ -199,11 +203,11 @@ public class Recipe extends BervanOwnedBaseEntity<UUID> implements PersistableTa
         this.favorite = favorite;
     }
 
-    public String getTags() {
+    public List<String> getTags() {
         return tags;
     }
 
-    public void setTags(String tags) {
+    public void setTags(List<String> tags) {
         this.tags = tags;
     }
 

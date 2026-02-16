@@ -15,6 +15,7 @@ import java.util.UUID;
 
 @Service
 public class RecipeService extends BaseService<UUID, Recipe> {
+    private final RecipeRepository recipeRepository;
     private final RecipeHistoryRepository historyRepository;
     private final RecipeRatingRepository ratingRepository;
 
@@ -22,8 +23,13 @@ public class RecipeService extends BaseService<UUID, Recipe> {
                          RecipeHistoryRepository historyRepository,
                          RecipeRatingRepository ratingRepository) {
         super(repository, searchService);
+        this.recipeRepository = repository;
         this.historyRepository = historyRepository;
         this.ratingRepository = ratingRepository;
+    }
+
+    public List<String> loadAllTags() {
+        return recipeRepository.findAllDistinctTags();
     }
 
     @Override
