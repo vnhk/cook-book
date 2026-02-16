@@ -60,7 +60,7 @@ columns:
 
   - field: tags
     displayName: "Tags"
-    internalNameField: "Recipe_tags_columnName"
+    internalName: "tags"
     inSaveForm: true
     inEditForm: true
     inTable: false

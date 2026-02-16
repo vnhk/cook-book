@@ -38,6 +38,7 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
     private final UnitConversionEngine unitConversionEngine;
     private final BervanViewConfig bervanViewConfig;
     private final CookBookPageLayout cookBookPageLayout = new CookBookPageLayout(ROUTE_NAME);
+    private List<String> allAvailableTags = new ArrayList<>();
 
     public AbstractRecipeDetailView(RecipeService recipeService,
                                      IngredientService ingredientService,
@@ -50,6 +51,11 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         this.unitConversionEngine = unitConversionEngine;
         this.bervanViewConfig = bervanViewConfig;
         add(cookBookPageLayout);
+
+        try {
+            allAvailableTags = recipeService.loadAllTags();
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -121,17 +127,24 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         headerContent.add(nameField, favoriteIcon);
         headerCard.add(headerContent);
 
-        // Display tags as chips
-        if (recipe.getTags() != null && !recipe.getTags().isEmpty()) {
-            HorizontalLayout tagsRow = new HorizontalLayout();
-            tagsRow.getStyle().set("flex-wrap", "wrap").set("gap", "4px");
-            for (String tag : recipe.getTags()) {
-                Span chip = new Span(tag.trim());
-                chip.addClassName("tag-chip");
-                tagsRow.add(chip);
-            }
-            headerCard.add(tagsRow);
-        }
+        // Tags (inline editable multi-select)
+        InlineEditableField tagsField = new InlineEditableField(
+                "Tags", recipe.getTags(), InlineEditableField.FieldType.MULTI_SELECT,
+                allAvailableTags,
+                val -> {
+                    @SuppressWarnings("unchecked")
+                    List<String> tags = val instanceof List ? (List<String>) val : new ArrayList<>();
+                    recipe.setTags(tags);
+                    recipeService.save(recipe);
+                    // Refresh available tags
+                    try {
+                        allAvailableTags = recipeService.loadAllTags();
+                    } catch (Exception ignored) {
+                    }
+                    init(recipe.getId().toString());
+                }
+        );
+        headerCard.add(tagsField);
 
         return headerCard;
     }
