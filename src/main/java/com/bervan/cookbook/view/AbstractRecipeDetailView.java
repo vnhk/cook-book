@@ -1,7 +1,7 @@
 package com.bervan.cookbook.view;
 
 import com.bervan.common.component.BervanButton;
-
+import com.bervan.common.component.InlineEditableField;
 import com.bervan.common.component.WysiwygTextArea;
 import com.bervan.common.config.BervanViewConfig;
 import com.bervan.common.view.AbstractPageView;
@@ -20,7 +20,6 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
@@ -37,7 +36,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
     private final IngredientService ingredientService;
     private final ShoppingCartService shoppingCartService;
     private final UnitConversionEngine unitConversionEngine;
-    private final RecipeImportService recipeImportService;
     private final BervanViewConfig bervanViewConfig;
     private final CookBookPageLayout cookBookPageLayout = new CookBookPageLayout(ROUTE_NAME);
 
@@ -45,13 +43,11 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
                                      IngredientService ingredientService,
                                      ShoppingCartService shoppingCartService,
                                      UnitConversionEngine unitConversionEngine,
-                                     RecipeImportService recipeImportService,
                                      BervanViewConfig bervanViewConfig) {
         this.recipeService = recipeService;
         this.ingredientService = ingredientService;
         this.shoppingCartService = shoppingCartService;
         this.unitConversionEngine = unitConversionEngine;
-        this.recipeImportService = recipeImportService;
         this.bervanViewConfig = bervanViewConfig;
         add(cookBookPageLayout);
     }
@@ -90,9 +86,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         // === Rating Section ===
         add(buildRatingSection(recipe));
 
-        // === Import from URL Section ===
-        add(buildImportSection());
-
         // === Add to Cart ===
         add(buildAddToCartSection(recipe));
     }
@@ -108,8 +101,15 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         headerContent.setAlignItems(FlexComponent.Alignment.CENTER);
         headerContent.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-        H2 title = new H2(recipe.getName());
-        title.addClassName("cb-recipe-title");
+        InlineEditableField nameField = new InlineEditableField(
+                "Name", recipe.getName(), InlineEditableField.FieldType.TEXT,
+                val -> {
+                    recipe.setName(val != null ? val.toString() : "");
+                    recipeService.save(recipe);
+                    cookBookPageLayout.updateButtonText(ROUTE_NAME, recipe.getName());
+                }
+        );
+        nameField.getStyle().set("flex-grow", "1");
 
         Icon favoriteIcon = CookBookUIHelper.createFavoriteIcon(recipe.getFavorite());
         favoriteIcon.getStyle().set("cursor", "pointer");
@@ -118,13 +118,21 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
             init(recipe.getId().toString());
         });
 
-        HorizontalLayout left = new HorizontalLayout(title);
-        left.setAlignItems(FlexComponent.Alignment.CENTER);
-
-        headerContent.add(left, favoriteIcon);
+        headerContent.add(nameField, favoriteIcon);
         headerCard.add(headerContent);
 
-        // Tags
+        // Tags (inline editable)
+        InlineEditableField tagsField = new InlineEditableField(
+                "Tags", recipe.getTags(), InlineEditableField.FieldType.TEXT,
+                val -> {
+                    recipe.setTags(val != null ? val.toString() : null);
+                    recipeService.save(recipe);
+                    init(recipe.getId().toString());
+                }
+        );
+        headerCard.add(tagsField);
+
+        // Display tags as chips (read-only visual)
         if (recipe.getTags() != null && !recipe.getTags().isBlank()) {
             HorizontalLayout tagsRow = new HorizontalLayout();
             tagsRow.getStyle().set("flex-wrap", "wrap").set("gap", "4px");
@@ -148,30 +156,50 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         Div grid = new Div();
         grid.addClassName("cb-metadata-grid");
 
-        grid.add(createMetadataItem("Prep Time", recipe.getPrepTime() != null ? recipe.getPrepTime() + " min" : "-"));
-        grid.add(createMetadataItem("Cook Time", recipe.getCookTime() != null ? recipe.getCookTime() + " min" : "-"));
-        grid.add(createMetadataItem("Total Time", recipe.getTotalTime() != null ? recipe.getTotalTime() + " min" : "-"));
-        grid.add(createMetadataItem("Servings", recipe.getServings() != null ? recipe.getServings().toString() : "-"));
-        grid.add(createMetadataItem("Calories", recipe.getTotalCalories() != null ? recipe.getTotalCalories().toString() : "-"));
+        grid.add(new InlineEditableField("Prep Time (min)", recipe.getPrepTime(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setPrepTime(val != null ? ((Double) val).intValue() : null);
+            recipeService.save(recipe);
+            init(recipe.getId().toString());
+        }));
+
+        grid.add(new InlineEditableField("Cook Time (min)", recipe.getCookTime(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setCookTime(val != null ? ((Double) val).intValue() : null);
+            recipeService.save(recipe);
+            init(recipe.getId().toString());
+        }));
+
+        // Total Time - read only (auto-calculated)
+        Div totalTimeItem = new Div();
+        Span totalLabel = new Span("Total Time");
+        totalLabel.addClassName("field-label");
+        Span totalValue = new Span(recipe.getTotalTime() != null ? recipe.getTotalTime() + " min" : "—");
+        totalValue.addClassName("field-value");
+        totalTimeItem.add(totalLabel, new Div(totalValue));
+        grid.add(totalTimeItem);
+
+        grid.add(new InlineEditableField("Servings", recipe.getServings(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setServings(val != null ? ((Double) val).intValue() : null);
+            recipeService.save(recipe);
+        }));
+
+        grid.add(new InlineEditableField("Calories", recipe.getTotalCalories(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setTotalCalories(val != null ? ((Double) val).intValue() : null);
+            recipeService.save(recipe);
+        }));
 
         Div ratingItem = new Div();
-        ratingItem.add(new Span("Rating"));
+        Span ratingLabel = new Span("Rating");
+        ratingLabel.addClassName("field-label");
+        ratingItem.add(ratingLabel);
         ratingItem.add(CookBookUIHelper.createRatingStars(recipe.getAverageRating()));
         grid.add(ratingItem);
 
         section.add(grid);
         return section;
-    }
-
-    private Div createMetadataItem(String label, String value) {
-        Div item = new Div();
-        Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("font-size", "var(--bervan-font-size-xs, 0.75rem)")
-                .set("color", "var(--bervan-text-tertiary)");
-        Span valueSpan = new Span(value);
-        valueSpan.getStyle().set("font-weight", "600");
-        item.add(labelSpan, new Div(valueSpan));
-        return item;
     }
 
     private Component buildIngredientsSection(Recipe recipe) {
@@ -356,45 +384,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         }
 
         section.add(ratingRow);
-        return section;
-    }
-
-    private Component buildImportSection() {
-        Div section = new Div();
-        section.addClassName("bervan-glass-card");
-        section.addClassName("pm-section");
-        section.getStyle().set("width", "100%");
-
-        H3 title = new H3("Import from URL");
-        section.add(title);
-
-        HorizontalLayout row = new HorizontalLayout();
-        row.setWidthFull();
-        row.setAlignItems(FlexComponent.Alignment.END);
-
-        TextField urlField = new TextField("Recipe URL");
-        urlField.setWidthFull();
-        urlField.setPlaceholder("https://...");
-
-        BervanButton importBtn = new BervanButton("Import");
-        importBtn.addClickListener(e -> {
-            String url = urlField.getValue();
-            if (url == null || url.isBlank()) {
-                showErrorNotification("Enter a URL");
-                return;
-            }
-            try {
-                Recipe imported = recipeImportService.importFromScraped(
-                        recipeImportService.scrapePreview(url));
-                showSuccessNotification("Recipe imported: " + imported.getName());
-                init(imported.getId().toString());
-            } catch (Exception ex) {
-                showErrorNotification("Import failed: " + ex.getMessage());
-            }
-        });
-
-        row.add(urlField, importBtn);
-        section.add(row);
         return section;
     }
 
