@@ -19,7 +19,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 
 import java.util.ArrayList;
@@ -98,16 +99,16 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
         Button importBtn = new BervanButton(new Icon(VaadinIcon.DOWNLOAD), e -> openImportDialog());
         importBtn.addClassName("bervan-icon-btn");
         importBtn.addClassName("accent");
-        importBtn.getElement().setAttribute("title", "Import from URL");
+        importBtn.getElement().setAttribute("title", "Import from HTML");
         topTableActions.addComponentAtIndex(1, importBtn);
     }
 
     private void openImportDialog() {
         Dialog dialog = new Dialog();
-        dialog.setWidth("500px");
+        dialog.setWidth("700px");
         dialog.setCloseOnOutsideClick(false);
 
-        H3 title = new H3("Import Recipe from URL");
+        H3 title = new H3("Import Recipe from HTML");
         title.getStyle().set("margin", "0");
 
         Button closeButton = new BervanButton(new Icon(VaadinIcon.CLOSE), e -> dialog.close());
@@ -118,19 +119,33 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
         header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         header.setAlignItems(FlexComponent.Alignment.CENTER);
 
-        TextField urlField = new TextField("Recipe URL");
-        urlField.setWidthFull();
-        urlField.setPlaceholder("https://...");
+        ComboBox<String> scraperCombo = new ComboBox<>("Scraper");
+        scraperCombo.setWidthFull();
+        List<String> scraperNames = recipeImportService.getAvailableScraperNames();
+        scraperCombo.setItems(scraperNames);
+        if (!scraperNames.isEmpty()) {
+            scraperCombo.setValue(scraperNames.get(0));
+        }
+
+        TextArea htmlField = new TextArea("HTML");
+        htmlField.setWidthFull();
+        htmlField.setHeight("300px");
+        htmlField.setPlaceholder("Paste full HTML of the recipe page here...");
 
         Button importButton = new BervanButton("Import", e -> {
-            String url = urlField.getValue();
-            if (url == null || url.isBlank()) {
-                showErrorNotification("Enter a URL");
+            String scraperName = scraperCombo.getValue();
+            String html = htmlField.getValue();
+            if (scraperName == null || scraperName.isBlank()) {
+                showErrorNotification("Select a scraper");
+                return;
+            }
+            if (html == null || html.isBlank()) {
+                showErrorNotification("Paste HTML content");
                 return;
             }
             try {
                 Recipe imported = recipeImportService.importFromScraped(
-                        recipeImportService.scrapePreview(url));
+                        recipeImportService.scrapePreview(scraperName, html));
                 showSuccessNotification("Recipe imported: " + imported.getName());
                 dialog.close();
                 refreshData();
@@ -141,7 +156,7 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
         importButton.addClassName("bervan-icon-btn");
         importButton.addClassName("primary");
 
-        VerticalLayout content = new VerticalLayout(header, urlField, importButton);
+        VerticalLayout content = new VerticalLayout(header, scraperCombo, htmlField, importButton);
         content.setSpacing(true);
         content.setPadding(true);
         content.setAlignItems(FlexComponent.Alignment.STRETCH);

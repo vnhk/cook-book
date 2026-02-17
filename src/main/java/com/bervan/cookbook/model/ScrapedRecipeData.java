@@ -19,6 +19,8 @@ public class ScrapedRecipeData {
     private Integer cookTime;
     private Integer servings;
     private Integer totalCalories;
+    private Double averageRating;
+    private Integer ratingCount;
     private String tags;
     private String requiredEquipment;
     private String sourceUrl;

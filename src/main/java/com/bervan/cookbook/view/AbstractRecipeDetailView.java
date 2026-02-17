@@ -437,6 +437,8 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
 
         WysiwygTextArea wysiwygTextArea = new WysiwygTextArea("Instructions");
         wysiwygTextArea.setWidthFull();
+        wysiwygTextArea.setHeight("auto");
+        wysiwygTextArea.addClassName("cb-instructions-editor");
         if (recipe.getInstruction() != null) {
             wysiwygTextArea.setValue(recipe.getInstruction());
         }

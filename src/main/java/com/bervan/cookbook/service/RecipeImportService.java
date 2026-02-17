@@ -28,16 +28,22 @@ public class RecipeImportService {
         this.ingredientService = ingredientService;
     }
 
-    public Optional<RecipeScraperStrategy> findStrategy(String url) {
+    public List<String> getAvailableScraperNames() {
         return scraperStrategies.stream()
-                .filter(s -> s.supports(url))
-                .findFirst();
+                .map(RecipeScraperStrategy::getName)
+                .toList();
     }
 
-    public ScrapedRecipeData scrapePreview(String url) {
-        RecipeScraperStrategy strategy = findStrategy(url)
-                .orElseThrow(() -> new IllegalArgumentException("No scraper strategy found for URL: " + url));
-        return strategy.scrape(url);
+    public RecipeScraperStrategy findStrategyByName(String name) {
+        return scraperStrategies.stream()
+                .filter(s -> s.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No scraper found with name: " + name));
+    }
+
+    public ScrapedRecipeData scrapePreview(String scraperName, String html) {
+        RecipeScraperStrategy strategy = findStrategyByName(scraperName);
+        return strategy.scrape(html);
     }
 
     public Recipe importFromScraped(ScrapedRecipeData data) {
@@ -57,6 +63,8 @@ public class RecipeImportService {
         recipe.setCookTime(data.getCookTime());
         recipe.setServings(data.getServings());
         recipe.setTotalCalories(data.getTotalCalories());
+        recipe.setAverageRating(data.getAverageRating());
+        recipe.setRatingCount(data.getRatingCount());
         if (data.getTags() != null && !data.getTags().isBlank()) {
             recipe.setTags(Arrays.stream(data.getTags().split(","))
                     .map(String::trim)

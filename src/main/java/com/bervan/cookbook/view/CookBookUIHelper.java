@@ -1,5 +1,6 @@
 package com.bervan.cookbook.view;
 
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -14,19 +15,47 @@ public class CookBookUIHelper {
 
         double r = rating != null ? rating : 0;
         for (int i = 1; i <= 5; i++) {
-            Icon star;
             if (i <= r) {
-                star = VaadinIcon.STAR.create();
+                // Full star
+                Icon star = VaadinIcon.STAR.create();
                 star.addClassName("cb-star-filled");
-            } else if (i - 0.5 <= r) {
-                star = VaadinIcon.STAR.create();
-                star.addClassName("cb-star-half");
+                star.setSize("16px");
+                stars.add(star);
+            } else if (i - 1 < r) {
+                // Partial star - use two overlapping icons
+                double fraction = r - (i - 1);
+                int percent = (int) Math.round(fraction * 100);
+
+                Div wrapper = new Div();
+                wrapper.getStyle()
+                        .set("position", "relative")
+                        .set("display", "inline-block")
+                        .set("width", "16px")
+                        .set("height", "16px");
+
+                Icon emptyBg = VaadinIcon.STAR_O.create();
+                emptyBg.addClassName("cb-star-empty");
+                emptyBg.setSize("16px");
+                emptyBg.getStyle().set("position", "absolute").set("top", "0").set("left", "0");
+
+                Icon filledPart = VaadinIcon.STAR.create();
+                filledPart.addClassName("cb-star-filled");
+                filledPart.setSize("16px");
+                filledPart.getStyle()
+                        .set("position", "absolute")
+                        .set("top", "0")
+                        .set("left", "0")
+                        .set("clip-path", "inset(0 " + (100 - percent) + "% 0 0)");
+
+                wrapper.add(emptyBg, filledPart);
+                stars.add(wrapper);
             } else {
-                star = VaadinIcon.STAR_O.create();
+                // Empty star
+                Icon star = VaadinIcon.STAR_O.create();
                 star.addClassName("cb-star-empty");
+                star.setSize("16px");
+                stars.add(star);
             }
-            star.setSize("16px");
-            stars.add(star);
         }
 
         if (rating != null) {
