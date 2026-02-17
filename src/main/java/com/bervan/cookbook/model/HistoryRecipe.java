@@ -55,6 +55,9 @@ public class HistoryRecipe extends BervanHistoryOwnedEntity<UUID> implements Per
     @HistoryField
     private String requiredEquipment;
 
+    @HistoryField
+    private String mainImageUrl;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @HistoryOwnerEntity
     private Recipe historyOwner;
@@ -162,6 +165,14 @@ public class HistoryRecipe extends BervanHistoryOwnedEntity<UUID> implements Per
 
     public void setRequiredEquipment(String requiredEquipment) {
         this.requiredEquipment = requiredEquipment;
+    }
+
+    public String getMainImageUrl() {
+        return mainImageUrl;
+    }
+
+    public void setMainImageUrl(String mainImageUrl) {
+        this.mainImageUrl = mainImageUrl;
     }
 
     public Recipe getHistoryOwner() {

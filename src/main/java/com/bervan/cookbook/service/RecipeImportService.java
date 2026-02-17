@@ -65,6 +65,7 @@ public class RecipeImportService {
         }
         recipe.setRequiredEquipment(data.getRequiredEquipment());
         recipe.setSourceUrl(data.getSourceUrl());
+        recipe.setMainImageUrl(data.getMainImageUrl());
 
         Set<RecipeIngredient> recipeIngredients = new HashSet<>();
 
@@ -76,6 +77,7 @@ public class RecipeImportService {
                 ri.setOriginalText(line.getOriginalText());
                 ri.setQuantity(line.getQuantity());
                 ri.setOptional(false);
+                ri.setCategory(line.getCategory());
 
                 // Parse unit
                 CulinaryUnit unit = unitConversionEngine.parseUnit(line.getUnitText());

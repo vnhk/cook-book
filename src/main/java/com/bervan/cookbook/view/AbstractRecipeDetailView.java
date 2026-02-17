@@ -11,6 +11,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dependency.CssImport;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.*;
@@ -27,6 +28,7 @@ import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @CssImport("./bervan-cookbook.css")
 public abstract class AbstractRecipeDetailView extends AbstractPageView implements HasUrlParameter<String> {
@@ -77,6 +79,9 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         cookBookPageLayout.updateButtonText(ROUTE_NAME, recipe.getName());
         setWidthFull();
 
+        // === Main Image ===
+        add(buildImageSection(recipe));
+
         // === Header Card ===
         add(buildHeaderSection(recipe));
 
@@ -89,11 +94,52 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         // === Instructions Section ===
         add(buildInstructionSection(recipe));
 
-        // === Rating Section ===
-        add(buildRatingSection(recipe));
-
         // === Add to Cart ===
         add(buildAddToCartSection(recipe));
+    }
+
+    private Component buildImageSection(Recipe recipe) {
+        Div section = new Div();
+        section.getStyle().set("width", "100%");
+
+        if (recipe.getMainImageUrl() != null && !recipe.getMainImageUrl().isBlank()) {
+            Image img = new Image(recipe.getMainImageUrl(), recipe.getName());
+            img.addClassName("cb-recipe-main-image");
+            img.getStyle().set("cursor", "pointer");
+            img.addClickListener(e -> openImageUrlDialog(recipe));
+            section.add(img);
+        } else {
+            BervanButton addImageBtn = new BervanButton(new Icon(VaadinIcon.CAMERA),
+                    e -> openImageUrlDialog(recipe));
+            addImageBtn.getElement().setAttribute("title", "Add Image");
+            addImageBtn.addClassName("bervan-icon-btn");
+            section.add(addImageBtn);
+        }
+
+        return section;
+    }
+
+    private void openImageUrlDialog(Recipe recipe) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Recipe Image URL");
+        dialog.setWidth("500px");
+
+        TextField urlField = new TextField("Image URL");
+        urlField.setWidthFull();
+        urlField.setValue(recipe.getMainImageUrl() != null ? recipe.getMainImageUrl() : "");
+        urlField.setPlaceholder("https://...");
+
+        BervanButton saveBtn = new BervanButton("Save", e -> {
+            String url = urlField.getValue();
+            recipe.setMainImageUrl(url != null && !url.isBlank() ? url : null);
+            recipeService.save(recipe);
+            dialog.close();
+            init(recipe.getId().toString());
+        });
+
+        dialog.add(new VerticalLayout(urlField));
+        dialog.getFooter().add(saveBtn);
+        dialog.open();
     }
 
     private Component buildHeaderSection(Recipe recipe) {
@@ -136,7 +182,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
                     List<String> tags = val instanceof List ? (List<String>) val : new ArrayList<>();
                     recipe.setTags(tags);
                     recipeService.save(recipe);
-                    // Refresh available tags
                     try {
                         allAvailableTags = recipeService.loadAllTags();
                     } catch (Exception ignored) {
@@ -193,11 +238,21 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
             recipeService.save(recipe);
         }));
 
+        // Rating - inline editable average + count + visual stars
         Div ratingItem = new Div();
-        Span ratingLabel = new Span("Rating");
-        ratingLabel.addClassName("field-label");
-        ratingItem.add(ratingLabel);
-        ratingItem.add(CookBookUIHelper.createRatingStars(recipe.getAverageRating()));
+        ratingItem.add(new InlineEditableField("Rating", recipe.getAverageRating(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setAverageRating(val != null ? (Double) val : null);
+            recipeService.save(recipe);
+            init(recipe.getId().toString());
+        }));
+        ratingItem.add(new InlineEditableField("Rating Count", recipe.getRatingCount(),
+                InlineEditableField.FieldType.NUMBER, val -> {
+            recipe.setRatingCount(val != null ? ((Double) val).intValue() : null);
+            recipeService.save(recipe);
+            init(recipe.getId().toString());
+        }));
+        ratingItem.add(CookBookUIHelper.createRatingStars(recipe.getAverageRating(), recipe.getRatingCount()));
         grid.add(ratingItem);
 
         section.add(grid);
@@ -222,10 +277,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         header.add(title, addBtn);
         section.add(header);
 
-        Grid<RecipeIngredient> grid = new Grid<>();
-        grid.setWidthFull();
-        grid.setAllRowsVisible(true);
-
         List<RecipeIngredient> ingredients = recipe.getRecipeIngredients() != null
                 ? recipe.getRecipeIngredients().stream()
                 .filter(ri -> !Boolean.TRUE.equals(ri.isDeleted()))
@@ -233,6 +284,32 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
                 .toList()
                 : Collections.emptyList();
 
+        // Group by category
+        Map<String, List<RecipeIngredient>> grouped = ingredients.stream()
+                .collect(Collectors.groupingBy(
+                        ri -> ri.getCategory() != null ? ri.getCategory() : "Składniki",
+                        LinkedHashMap::new, Collectors.toList()));
+
+        if (grouped.size() <= 1) {
+            section.add(buildIngredientGrid(recipe, ingredients));
+        } else {
+            for (Map.Entry<String, List<RecipeIngredient>> entry : grouped.entrySet()) {
+                Details details = new Details(
+                        entry.getKey() + " (" + entry.getValue().size() + ")",
+                        buildIngredientGrid(recipe, entry.getValue()));
+                details.setOpened(true);
+                details.setWidthFull();
+                section.add(details);
+            }
+        }
+
+        return section;
+    }
+
+    private Grid<RecipeIngredient> buildIngredientGrid(Recipe recipe, List<RecipeIngredient> ingredients) {
+        Grid<RecipeIngredient> grid = new Grid<>();
+        grid.setWidthFull();
+        grid.setAllRowsVisible(true);
         grid.setItems(ingredients);
 
         grid.addColumn(ri -> ri.getQuantity() != null
@@ -264,8 +341,7 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
             return removeBtn;
         })).setHeader("").setWidth("50px");
 
-        section.add(grid);
-        return section;
+        return grid;
     }
 
     private void openAddIngredientDialog(Recipe recipe) {
@@ -299,11 +375,27 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         unitCombo.setValue(CulinaryUnit.GRAM);
         unitCombo.setWidthFull();
 
+        // Category with autocomplete from existing categories in this recipe
+        ComboBox<String> categoryCombo = new ComboBox<>("Category");
+        categoryCombo.setWidthFull();
+        categoryCombo.setAllowCustomValue(true);
+        categoryCombo.setPlaceholder("e.g., Na ciasto, Na farsz");
+        List<String> existingCategories = recipe.getRecipeIngredients() != null
+                ? recipe.getRecipeIngredients().stream()
+                .map(RecipeIngredient::getCategory)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList()
+                : Collections.emptyList();
+        categoryCombo.setItems(existingCategories);
+        categoryCombo.addCustomValueSetListener(e -> categoryCombo.setValue(e.getDetail()));
+
         TextField originalTextField = new TextField("Original Text");
         originalTextField.setWidthFull();
         originalTextField.setPlaceholder("e.g., 2 szklanki mąki pszennej");
 
-        layout.add(ingredientCombo, quantityField, unitCombo, originalTextField);
+        layout.add(ingredientCombo, quantityField, unitCombo, categoryCombo, originalTextField);
 
         BervanButton saveBtn = new BervanButton("Add");
         saveBtn.addClickListener(e -> {
@@ -318,6 +410,7 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
             ri.setIngredient(ingredientCombo.getValue());
             ri.setQuantity(quantityField.getValue());
             ri.setUnit(unitCombo.getValue());
+            ri.setCategory(categoryCombo.getValue());
             ri.setOriginalText(originalTextField.getValue());
             ri.setOptional(false);
             ri.getOwners().addAll(recipe.getOwners());
@@ -356,36 +449,6 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
         });
 
         section.add(wysiwygTextArea, saveInstructionBtn);
-        return section;
-    }
-
-    private Component buildRatingSection(Recipe recipe) {
-        Div section = new Div();
-        section.addClassName("bervan-glass-card");
-        section.addClassName("pm-section");
-        section.getStyle().set("width", "100%");
-
-        H3 title = new H3("Rate this Recipe");
-        section.add(title);
-
-        HorizontalLayout ratingRow = new HorizontalLayout();
-        ratingRow.setAlignItems(FlexComponent.Alignment.CENTER);
-
-        for (int i = 1; i <= 5; i++) {
-            final int rating = i;
-            Icon star = VaadinIcon.STAR.create();
-            star.setSize("28px");
-            star.addClassName("cb-star-empty");
-            star.getStyle().set("cursor", "pointer");
-            star.addClickListener(e -> {
-                recipeService.addRating(recipe.getId(), rating, null);
-                showSuccessNotification("Rating saved!");
-                init(recipe.getId().toString());
-            });
-            ratingRow.add(star);
-        }
-
-        section.add(ratingRow);
         return section;
     }
 

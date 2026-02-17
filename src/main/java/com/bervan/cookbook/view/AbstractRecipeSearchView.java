@@ -162,7 +162,7 @@ public abstract class AbstractRecipeSearchView extends AbstractPageView {
                 .setHeader("Coverage").setWidth("90px");
 
         grid.addColumn(new ComponentRenderer<>(r ->
-                CookBookUIHelper.createRatingStars(r.getRecipe().getAverageRating())
+                CookBookUIHelper.createRatingStars(r.getRecipe().getAverageRating(), r.getRecipe().getRatingCount())
         )).setHeader("Rating").setWidth("150px");
 
         grid.addColumn(new ComponentRenderer<>(r -> {

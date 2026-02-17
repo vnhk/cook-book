@@ -22,6 +22,7 @@ public class ScrapedRecipeData {
     private String tags;
     private String requiredEquipment;
     private String sourceUrl;
+    private String mainImageUrl;
     private List<ScrapedIngredientLine> ingredientLines;
 
     @Data
@@ -32,5 +33,6 @@ public class ScrapedRecipeData {
         private Double quantity;
         private String unitText;
         private String ingredientText;
+        private String category;
     }
 }

@@ -16,6 +16,14 @@ columns:
     inEditForm: true
     inTable: false
 
+  - field: mainImageUrl
+    displayName: "Image URL"
+    internalName: "mainImageUrl"
+    inSaveForm: true
+    inEditForm: true
+    inTable: false
+    max: 1000
+
   - field: prepTime
     displayName: "Prep Time (min)"
     internalNameField: "Recipe_prepTime_columnName"
@@ -53,10 +61,17 @@ columns:
 
   - field: averageRating
     displayName: "Rating"
-    internalNameField: "Recipe_averageRating_columnName"
-    inSaveForm: false
-    inEditForm: false
+    internalName: "averageRating"
+    inSaveForm: true
+    inEditForm: true
     inTable: true
+
+  - field: ratingCount
+    displayName: "Rating Count"
+    internalName: "ratingCount"
+    inSaveForm: true
+    inEditForm: true
+    inTable: false
 
   - field: tags
     displayName: "Tags"

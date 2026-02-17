@@ -64,6 +64,9 @@ public class Recipe extends BervanOwnedBaseEntity<UUID> implements PersistableTa
     @Size(max = 500)
     private String requiredEquipment;
 
+    @Size(max = 1000)
+    private String mainImageUrl;
+
     @Size(max = 300)
     private String sourceUrl;
 
@@ -217,6 +220,14 @@ public class Recipe extends BervanOwnedBaseEntity<UUID> implements PersistableTa
 
     public void setRequiredEquipment(String requiredEquipment) {
         this.requiredEquipment = requiredEquipment;
+    }
+
+    public String getMainImageUrl() {
+        return mainImageUrl;
+    }
+
+    public void setMainImageUrl(String mainImageUrl) {
+        this.mainImageUrl = mainImageUrl;
     }
 
     public String getSourceUrl() {

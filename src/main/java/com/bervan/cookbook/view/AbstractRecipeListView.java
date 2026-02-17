@@ -12,6 +12,8 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -49,6 +51,17 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
     @Override
     protected Grid<Recipe> getGrid() {
         Grid<Recipe> grid = new Grid<>(Recipe.class, false);
+
+        // Thumbnail column first
+        grid.addComponentColumn(recipe -> {
+            if (recipe.getMainImageUrl() != null && !recipe.getMainImageUrl().isBlank()) {
+                Image img = new Image(recipe.getMainImageUrl(), "");
+                img.addClassName("cb-recipe-thumbnail");
+                return img;
+            }
+            return new Span();
+        }).setKey("image").setHeader("").setWidth("60px").setFlexGrow(0);
+
         buildGridAutomatically(grid);
 
         if (grid.getColumnByKey("name") != null) {
@@ -65,8 +78,8 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
 
         if (grid.getColumnByKey("averageRating") != null) {
             grid.getColumnByKey("averageRating").setRenderer(new ComponentRenderer<>(
-                    recipe -> CookBookUIHelper.createRatingStars(recipe.getAverageRating())
-            )).setHeader("Rating").setWidth("150px");
+                    recipe -> CookBookUIHelper.createRatingStars(recipe.getAverageRating(), recipe.getRatingCount())
+            )).setHeader("Rating").setWidth("200px");
         }
 
         if (grid.getColumnByKey("totalTime") != null) {

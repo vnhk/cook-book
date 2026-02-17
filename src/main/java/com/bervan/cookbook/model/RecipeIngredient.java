@@ -31,6 +31,9 @@ public class RecipeIngredient extends BervanOwnedBaseEntity<UUID> implements Exc
 
     private Boolean optional;
 
+    @Size(max = 100)
+    private String category;
+
     @Size(max = 300)
     private String originalText;
 
@@ -106,6 +109,14 @@ public class RecipeIngredient extends BervanOwnedBaseEntity<UUID> implements Exc
 
     public void setOptional(Boolean optional) {
         this.optional = optional;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public String getOriginalText() {

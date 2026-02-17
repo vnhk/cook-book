@@ -7,7 +7,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 public class CookBookUIHelper {
 
-    public static HorizontalLayout createRatingStars(Double rating) {
+    public static HorizontalLayout createRatingStars(Double rating, Integer ratingCount) {
         HorizontalLayout stars = new HorizontalLayout();
         stars.addClassName("cb-rating-stars");
         stars.setSpacing(false);
@@ -18,6 +18,9 @@ public class CookBookUIHelper {
             if (i <= r) {
                 star = VaadinIcon.STAR.create();
                 star.addClassName("cb-star-filled");
+            } else if (i - 0.5 <= r) {
+                star = VaadinIcon.STAR.create();
+                star.addClassName("cb-star-half");
             } else {
                 star = VaadinIcon.STAR_O.create();
                 star.addClassName("cb-star-empty");
@@ -34,7 +37,24 @@ public class CookBookUIHelper {
             stars.add(ratingText);
         }
 
+        if (ratingCount != null && ratingCount > 0) {
+            Span countText = new Span("(" + formatRatingCount(ratingCount) + ")");
+            countText.getStyle().set("font-size", "var(--bervan-font-size-xs, 0.75rem)")
+                    .set("color", "var(--bervan-text-tertiary, #64748b)")
+                    .set("margin-left", "4px");
+            stars.add(countText);
+        }
+
         return stars;
+    }
+
+    public static String formatRatingCount(int count) {
+        if (count >= 1000) return "+" + (count / 1000) + "k";
+        if (count >= 500) return "+500";
+        if (count >= 100) return "+100";
+        if (count >= 50) return "+50";
+        if (count >= 10) return "+10";
+        return String.valueOf(count);
     }
 
     public static Span createCategoryBadge(String category) {
