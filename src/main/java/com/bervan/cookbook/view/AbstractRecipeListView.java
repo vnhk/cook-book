@@ -60,7 +60,7 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
                 return img;
             }
             return new Span();
-        }).setKey("image").setHeader("").setWidth("60px").setFlexGrow(0);
+        }).setKey("image").setHeader("").setWidth("150px").setFlexGrow(0);
 
         buildGridAutomatically(grid);
 
