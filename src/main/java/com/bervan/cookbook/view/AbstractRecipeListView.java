@@ -96,14 +96,14 @@ public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUI
     protected void customizeTopTableActions(HorizontalLayout topTableActions) {
         super.customizeTopTableActions(topTableActions);
 
-        Button importBtn = new BervanButton(new Icon(VaadinIcon.DOWNLOAD), e -> openImportDialog());
+        Button importBtn = new BervanButton(new Icon(VaadinIcon.DOWNLOAD), e -> openImportHTMLDialog());
         importBtn.addClassName("bervan-icon-btn");
         importBtn.addClassName("accent");
         importBtn.getElement().setAttribute("title", "Import from HTML");
         topTableActions.addComponentAtIndex(1, importBtn);
     }
 
-    private void openImportDialog() {
+    private void openImportHTMLDialog() {
         Dialog dialog = new Dialog();
         dialog.setWidth("700px");
         dialog.setCloseOnOutsideClick(false);
