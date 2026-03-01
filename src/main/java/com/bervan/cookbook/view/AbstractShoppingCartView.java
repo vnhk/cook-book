@@ -77,9 +77,6 @@ public abstract class AbstractShoppingCartView extends AbstractPageView {
         cartCombo.addValueChangeListener(e -> {
             selectedCart = e.getValue();
             buildView();
-            if (selectedCart != null) {
-                cartCombo.setValue(selectedCart);
-            }
         });
 
         BervanButton newCartBtn = new BervanButton("New Cart");
