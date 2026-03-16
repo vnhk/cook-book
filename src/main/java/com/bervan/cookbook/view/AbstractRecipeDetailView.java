@@ -316,7 +316,12 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
                 ? unitConversionEngine.formatQuantity(ri.getQuantity(), ri.getUnit() != null ? ri.getUnit() : CulinaryUnit.PIECE)
                 : "-").setHeader("Quantity").setWidth("120px");
 
-        grid.addColumn(ri -> ri.getIngredient().getName()).setHeader("Ingredient").setFlexGrow(1);
+        grid.addColumn(new ComponentRenderer<>(ri -> {
+            Span nameSpan = new Span(ri.getIngredient().getName());
+            nameSpan.addClassName("cb-ingredient-clickable");
+            nameSpan.addClickListener(e -> openEditIngredientDialog(recipe, ri));
+            return nameSpan;
+        })).setHeader("Ingredient").setFlexGrow(1);
 
         grid.addColumn(ri -> ri.getOriginalText() != null ? ri.getOriginalText() : "")
                 .setHeader("Original").setFlexGrow(1);
@@ -423,6 +428,79 @@ public abstract class AbstractRecipeDetailView extends AbstractPageView implemen
 
         dialog.add(layout);
         dialog.getFooter().add(saveBtn);
+        dialog.open();
+    }
+
+    private void openEditIngredientDialog(Recipe recipe, RecipeIngredient ri) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Edit ingredient: " + ri.getIngredient().getName());
+        dialog.setWidth("500px");
+
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setSpacing(false);
+
+        // --- Option 1: Rename ---
+        H4 renameTitle = new H4("Rename ingredient");
+        renameTitle.getStyle().set("margin-bottom", "4px");
+        Span renameHint = new Span("Renaming affects all recipes using this ingredient.");
+        renameHint.getStyle().set("font-size", "0.8rem").set("color", "var(--bervan-text-tertiary, #64748b)");
+
+        TextField nameField = new TextField("New name");
+        nameField.setWidthFull();
+        nameField.setValue(ri.getIngredient().getName());
+
+        BervanButton renameBtn = new BervanButton("Rename", e -> {
+            String newName = nameField.getValue();
+            if (newName == null || newName.isBlank()) {
+                Notification.show("Enter a name");
+                return;
+            }
+            ri.getIngredient().setName(newName.trim());
+            ingredientService.save(ri.getIngredient());
+            dialog.close();
+            init(recipe.getId().toString());
+        });
+
+        // --- Separator ---
+        Hr separator = new Hr();
+        separator.getStyle().set("margin", "16px 0");
+
+        // --- Option 2: Select from list ---
+        H4 selectTitle = new H4("Select existing ingredient from list");
+        selectTitle.getStyle().set("margin-bottom", "4px");
+        Span selectHint = new Span("Links this recipe ingredient to the selected one (removes duplicates).");
+        selectHint.getStyle().set("font-size", "0.8rem").set("color", "var(--bervan-text-tertiary, #64748b)");
+
+        ComboBox<Ingredient> ingredientCombo = new ComboBox<>("Ingredient");
+        ingredientCombo.setWidthFull();
+        ingredientCombo.setItemLabelGenerator(Ingredient::getName);
+        ingredientCombo.setItems(query -> {
+            String filter = query.getFilter().orElse("");
+            int offset = query.getOffset();
+            int limit = query.getLimit();
+            return ingredientService.searchByText(filter.isBlank() ? "a" : filter, offset, limit).stream();
+        });
+
+        BervanButton selectBtn = new BervanButton("Select", e -> {
+            Ingredient selected = ingredientCombo.getValue();
+            if (selected == null) {
+                Notification.show("Select an ingredient from the list");
+                return;
+            }
+            ri.setIngredient(selected);
+            recipeService.save(recipe);
+            dialog.close();
+            init(recipe.getId().toString());
+        });
+
+        layout.add(
+                renameTitle, renameHint, nameField, renameBtn,
+                separator,
+                selectTitle, selectHint, ingredientCombo, selectBtn
+        );
+
+        dialog.add(layout);
         dialog.open();
     }
 
