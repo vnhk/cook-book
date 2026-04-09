@@ -134,6 +134,9 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         int targetKcal = currentDay.getTargetKcal() != null ? currentDay.getTargetKcal() : 0;
         int targetProtein = currentDay.getTargetProtein() != null ? currentDay.getTargetProtein() : 0;
+        int targetCarbs = currentDay.getTargetCarbs() != null ? currentDay.getTargetCarbs() : 0;
+        int targetFat = currentDay.getTargetFat() != null ? currentDay.getTargetFat() : 0;
+        int targetFiber = currentDay.getTargetFiber() != null ? currentDay.getTargetFiber() : 0;
         int activity = currentDay.getActivityKcal() != null ? currentDay.getActivityKcal() : 0;
 
         double remainingKcal = targetKcal + activity - consumed;
@@ -173,9 +176,9 @@ public abstract class AbstractDietView extends VerticalLayout {
                 buildMacroTile("Remaining", fmt(remainingKcal), "kcal", activity > 0 ? "(+" + activity + " activity)" : "", remainingKcal < 0),
                 buildMacroTile("Protein", fmt(protein) + "g", "", targetProtein > 0 ? "/ " + targetProtein + "g" : "", false),
                 buildMacroTile("Protein left", fmt(remainingProtein) + "g", "", "", remainingProtein < 0),
-                buildMacroTile("Fat", fmt(fat) + "g", "", "", false),
-                buildMacroTile("Carbs", fmt(carbs) + "g", "", "", false),
-                buildMacroTile("Fiber", fmt(fiber) + "g", "", "", false)
+                buildMacroTile("Fat", fmt(fat) + "g", "", targetFat > 0 ? "/ " + targetFat + "g" : "", false),
+                buildMacroTile("Carbs", fmt(carbs) + "g", "", targetCarbs > 0 ? "/ " + targetCarbs + "g" : "", false),
+                buildMacroTile("Fiber", fmt(fiber) + "g", "", targetFiber > 0 ? "/ " + targetFiber + "g" : "", false)
         );
 
         card.add(titleRow, macroRow);
@@ -454,6 +457,15 @@ public abstract class AbstractDietView extends VerticalLayout {
         NumberField proteinField = new NumberField("Target Protein (g)");
         proteinField.setValue(currentDay.getTargetProtein() != null ? currentDay.getTargetProtein().doubleValue() : null);
 
+        NumberField carbsField = new NumberField("Target Carbs (g)");
+        carbsField.setValue(currentDay.getTargetCarbs() != null ? currentDay.getTargetCarbs().doubleValue() : null);
+
+        NumberField fatField = new NumberField("Target Fat (g)");
+        fatField.setValue(currentDay.getTargetFat() != null ? currentDay.getTargetFat().doubleValue() : null);
+
+        NumberField fiberField = new NumberField("Target Fiber (g)");
+        fiberField.setValue(currentDay.getTargetFiber() != null ? currentDay.getTargetFiber().doubleValue() : null);
+
         NumberField activityField = new NumberField("Activity Calories Burned");
         activityField.setValue(currentDay.getActivityKcal() != null ? currentDay.getActivityKcal().doubleValue() : 0.0);
 
@@ -462,13 +474,17 @@ public abstract class AbstractDietView extends VerticalLayout {
         weightField.setMin(0);
         weightField.setStep(0.1);
 
-        form.add(kcalField, proteinField, activityField, weightField);
+        form.add(kcalField, proteinField, carbsField, fatField, fiberField, activityField, weightField);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
 
         Button save = new Button("Save", e -> {
             dietService.updateDayTargets(
                     currentDay,
                     kcalField.getValue() != null ? kcalField.getValue().intValue() : null,
                     proteinField.getValue() != null ? proteinField.getValue().intValue() : null,
+                    carbsField.getValue() != null ? carbsField.getValue().intValue() : null,
+                    fatField.getValue() != null ? fatField.getValue().intValue() : null,
+                    fiberField.getValue() != null ? fiberField.getValue().intValue() : null,
                     activityField.getValue() != null ? activityField.getValue().intValue() : 0,
                     weightField.getValue()
             );

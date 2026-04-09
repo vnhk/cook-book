@@ -29,7 +29,14 @@ public class DietService extends BaseService<UUID, DietDay> {
             DietDay day = new DietDay();
             day.setId(UUID.randomUUID());
             day.setDate(date);
-            day.setActivityKcal(0);
+            dietDayRepository.findByDateAndDeletedFalse(date.minusDays(1)).ifPresent(prev -> {
+                day.setTargetKcal(prev.getTargetKcal());
+                day.setTargetProtein(prev.getTargetProtein());
+                day.setTargetCarbs(prev.getTargetCarbs());
+                day.setTargetFat(prev.getTargetFat());
+                day.setTargetFiber(prev.getTargetFiber());
+                day.setActivityKcal(prev.getActivityKcal());
+            });
             return save(day);
         });
     }
@@ -67,9 +74,14 @@ public class DietService extends BaseService<UUID, DietDay> {
         save(day);
     }
 
-    public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein, Integer activityKcal, Double weightKg) {
+    public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein,
+                                  Integer targetCarbs, Integer targetFat, Integer targetFiber,
+                                  Integer activityKcal, Double weightKg) {
         day.setTargetKcal(targetKcal);
         day.setTargetProtein(targetProtein);
+        day.setTargetCarbs(targetCarbs);
+        day.setTargetFat(targetFat);
+        day.setTargetFiber(targetFiber);
         day.setActivityKcal(activityKcal);
         day.setWeightKg(weightKg);
         save(day);
