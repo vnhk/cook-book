@@ -76,7 +76,7 @@ public class DietService extends BaseService<UUID, DietDay> {
 
     public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein,
                                   Integer targetCarbs, Integer targetFat, Integer targetFiber,
-                                  Integer activityKcal, Double weightKg) {
+                                  Integer activityKcal, Double weightKg, String notes) {
         day.setTargetKcal(targetKcal);
         day.setTargetProtein(targetProtein);
         day.setTargetCarbs(targetCarbs);
@@ -84,7 +84,47 @@ public class DietService extends BaseService<UUID, DietDay> {
         day.setTargetFiber(targetFiber);
         day.setActivityKcal(activityKcal);
         day.setWeightKg(weightKg);
+        day.setNotes(notes);
         save(day);
+    }
+
+    public void copyMealItems(DietDay targetDay, DietMeal.MealType targetType,
+                               LocalDate sourceDate, DietMeal.MealType sourceType) {
+        Optional<DietDay> sourceOpt = findByDate(sourceDate);
+        if (sourceOpt.isEmpty()) return;
+        DietDay sourceDay = sourceOpt.get();
+        DietMeal sourceMeal = sourceDay.getMeals().stream()
+                .filter(m -> m.getMealType() == sourceType && !Boolean.TRUE.equals(m.isDeleted()))
+                .findFirst().orElse(null);
+        if (sourceMeal == null) return;
+
+        java.util.List<DietMealItem> sourceItems = sourceMeal.getItems().stream()
+                .filter(i -> !Boolean.TRUE.equals(i.isDeleted()))
+                .toList();
+        if (sourceItems.isEmpty()) return;
+
+        getOrCreateMeal(targetDay, targetType);
+        DietDay freshTarget = getOrCreateDay(targetDay.getDate());
+        DietMeal targetMeal = freshTarget.getMeals().stream()
+                .filter(m -> m.getMealType() == targetType && !Boolean.TRUE.equals(m.isDeleted()))
+                .findFirst().orElseThrow();
+
+        for (DietMealItem source : sourceItems) {
+            DietMealItem copy = new DietMealItem();
+            copy.setId(UUID.randomUUID());
+            copy.setDescription(source.getDescription());
+            copy.setKcal(source.getKcal());
+            copy.setProtein(source.getProtein());
+            copy.setFat(source.getFat());
+            copy.setCarbs(source.getCarbs());
+            copy.setFiber(source.getFiber());
+            copy.setIngredient(source.getIngredient());
+            copy.setAmountGrams(source.getAmountGrams());
+            copy.setMeal(targetMeal);
+            copy.getOwners().addAll(freshTarget.getOwners());
+            targetMeal.getItems().add(copy);
+        }
+        save(freshTarget);
     }
 
     public Optional<DietDay> findByDate(LocalDate date) {

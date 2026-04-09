@@ -24,6 +24,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.NumberField;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 
 import java.time.LocalDate;
@@ -98,7 +99,10 @@ public abstract class AbstractDietView extends VerticalLayout {
         Button configButton = new Button("Set Data", VaadinIcon.COG.create(), e -> openDataDialog());
         configButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        bar.add(prev, datePicker, next, today, configButton);
+        Button exportButton = new Button("Export", VaadinIcon.DOWNLOAD.create(), e -> openExportDialog());
+        exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        bar.add(prev, datePicker, next, today, configButton, exportButton);
         return bar;
     }
 
@@ -141,6 +145,9 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         double remainingKcal = targetKcal + activity - consumed;
         double remainingProtein = targetProtein - protein;
+        double remainingFat = targetFat - fat;
+        double remainingCarbs = targetCarbs - carbs;
+        double remainingFiber = targetFiber - fiber;
 
         String dateLabel = currentDay.getDate().format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"));
         HorizontalLayout titleRow = new HorizontalLayout();
@@ -182,6 +189,36 @@ public abstract class AbstractDietView extends VerticalLayout {
         );
 
         card.add(titleRow, macroRow);
+
+        if (targetFat > 0 || targetCarbs > 0 || targetFiber > 0) {
+            HorizontalLayout remainingRow = new HorizontalLayout();
+            remainingRow.setSpacing(true);
+            remainingRow.setWidthFull();
+            remainingRow.getStyle().set("margin-top", "8px");
+            if (targetFat > 0)
+                remainingRow.add(buildMacroTile("Fat left", fmt(remainingFat) + "g", "", "", remainingFat < 0));
+            if (targetCarbs > 0)
+                remainingRow.add(buildMacroTile("Carbs left", fmt(remainingCarbs) + "g", "", "", remainingCarbs < 0));
+            if (targetFiber > 0)
+                remainingRow.add(buildMacroTile("Fiber left", fmt(remainingFiber) + "g", "", "", remainingFiber < 0));
+            card.add(remainingRow);
+        }
+
+        if (currentDay.getNotes() != null && !currentDay.getNotes().isBlank()) {
+            Div notesDiv = new Div();
+            notesDiv.getStyle()
+                    .set("margin-top", "10px")
+                    .set("padding", "8px 12px")
+                    .set("background", "var(--bervan-surface-2)")
+                    .set("border", "1px solid var(--bervan-border-color)")
+                    .set("border-radius", "6px")
+                    .set("font-size", "var(--bervan-font-size-sm)")
+                    .set("color", "var(--bervan-text-secondary)")
+                    .set("white-space", "pre-wrap");
+            notesDiv.setText(currentDay.getNotes());
+            card.add(notesDiv);
+        }
+
         return card;
     }
 
@@ -260,7 +297,13 @@ public abstract class AbstractDietView extends VerticalLayout {
         Button addBtn = new Button("Add", VaadinIcon.PLUS.create(), e -> openAddItemDialog(type));
         addBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
 
-        header.add(mealTitle, mealInfo, addBtn);
+        Button copyBtn = new Button("Copy", VaadinIcon.COPY.create(), e -> openCopyMealDialog(type));
+        copyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+
+        HorizontalLayout buttons = new HorizontalLayout(copyBtn, addBtn);
+        buttons.setSpacing(true);
+
+        header.add(mealTitle, mealInfo, buttons);
         section.add(header);
 
         if (!items.isEmpty()) {
@@ -310,20 +353,20 @@ public abstract class AbstractDietView extends VerticalLayout {
         dialog.setHeaderTitle("Add to " + mealType.getDisplayName());
         dialog.setWidth("500px");
 
-        Tab quickTab = new Tab("Quick Entry");
         Tab ingredientTab = new Tab("From Ingredient");
-        Tabs tabs = new Tabs(quickTab, ingredientTab);
+        Tab quickTab = new Tab("Quick Entry");
+        Tabs tabs = new Tabs(ingredientTab, quickTab);
 
-        Div quickContent = buildQuickEntryForm(dialog, mealType);
         Div ingredientContent = buildIngredientForm(dialog, mealType);
-        ingredientContent.setVisible(false);
+        Div quickContent = buildQuickEntryForm(dialog, mealType);
+        quickContent.setVisible(false);
 
         tabs.addSelectedChangeListener(e -> {
-            quickContent.setVisible(tabs.getSelectedTab() == quickTab);
             ingredientContent.setVisible(tabs.getSelectedTab() == ingredientTab);
+            quickContent.setVisible(tabs.getSelectedTab() == quickTab);
         });
 
-        VerticalLayout content = new VerticalLayout(tabs, quickContent, ingredientContent);
+        VerticalLayout content = new VerticalLayout(tabs, ingredientContent, quickContent);
         content.setPadding(false);
         content.setSpacing(false);
 
@@ -433,6 +476,86 @@ public abstract class AbstractDietView extends VerticalLayout {
         return div;
     }
 
+    private void openCopyMealDialog(DietMeal.MealType targetType) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Copy meal to " + targetType.getDisplayName());
+        dialog.setWidth("500px");
+
+        DatePicker sourceDatePicker = new DatePicker("Source date");
+        sourceDatePicker.setValue(selectedDate.minusDays(1));
+
+        ComboBox<DietMeal.MealType> sourceMealCombo = new ComboBox<>("Source meal");
+        sourceMealCombo.setItems(DietMeal.MealType.values());
+        sourceMealCombo.setItemLabelGenerator(DietMeal.MealType::getDisplayName);
+        sourceMealCombo.setValue(targetType);
+        sourceMealCombo.setWidthFull();
+
+        Div preview = new Div();
+        preview.getStyle()
+                .set("margin-top", "8px")
+                .set("padding", "8px 12px")
+                .set("background", "var(--bervan-surface-2)")
+                .set("border", "1px solid var(--bervan-border-color)")
+                .set("border-radius", "6px")
+                .set("min-height", "48px")
+                .set("font-size", "var(--bervan-font-size-sm)")
+                .set("color", "var(--bervan-text-secondary)");
+
+        Runnable updatePreview = () -> {
+            preview.removeAll();
+            LocalDate srcDate = sourceDatePicker.getValue();
+            DietMeal.MealType srcType = sourceMealCombo.getValue();
+            if (srcDate == null || srcType == null) return;
+            dietService.findByDate(srcDate).ifPresentOrElse(srcDay -> {
+                List<DietMealItem> items = srcDay.getMeals().stream()
+                        .filter(m -> m.getMealType() == srcType && !Boolean.TRUE.equals(m.isDeleted()))
+                        .findFirst()
+                        .map(m -> m.getItems().stream().filter(i -> !Boolean.TRUE.equals(i.isDeleted())).toList())
+                        .orElse(List.of());
+                if (items.isEmpty()) {
+                    preview.add(new Span("No items found."));
+                } else {
+                    for (DietMealItem item : items) {
+                        Div row = new Div();
+                        row.getStyle().set("padding", "2px 0");
+                        row.setText("• " + item.getDisplayName() + "  —  " +
+                                fmt(item.getEffectiveKcal()) + " kcal | " +
+                                fmt(item.getEffectiveProtein()) + "g P | " +
+                                fmt(item.getEffectiveFat()) + "g F | " +
+                                fmt(item.getEffectiveCarbs()) + "g C");
+                        preview.add(row);
+                    }
+                }
+            }, () -> preview.add(new Span("No data for this date.")));
+        };
+
+        sourceDatePicker.addValueChangeListener(e -> updatePreview.run());
+        sourceMealCombo.addValueChangeListener(e -> updatePreview.run());
+        updatePreview.run();
+
+        Button confirmBtn = new Button("Copy", e -> {
+            LocalDate srcDate = sourceDatePicker.getValue();
+            DietMeal.MealType srcType = sourceMealCombo.getValue();
+            if (srcDate == null || srcType == null) {
+                Notification.show("Select date and meal.");
+                return;
+            }
+            dietService.copyMealItems(currentDay, targetType, srcDate, srcType);
+            currentDay = dietService.getOrCreateDay(selectedDate);
+            refresh();
+            dialog.close();
+        });
+        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelBtn = new Button("Cancel", e -> dialog.close());
+
+        FormLayout form = new FormLayout(sourceDatePicker, sourceMealCombo);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+
+        dialog.add(new VerticalLayout(form, preview, new HorizontalLayout(confirmBtn, cancelBtn)));
+        dialog.open();
+    }
+
     private void updateMacroPreview(Div preview, Ingredient ingredient, Double grams) {
         if (ingredient == null || grams == null || !ingredient.hasMacros()) {
             preview.setText("");
@@ -474,6 +597,12 @@ public abstract class AbstractDietView extends VerticalLayout {
         weightField.setMin(0);
         weightField.setStep(0.1);
 
+        TextArea notesField = new TextArea("Notes");
+        notesField.setValue(currentDay.getNotes() != null ? currentDay.getNotes() : "");
+        notesField.setWidthFull();
+        notesField.setMaxLength(1000);
+        notesField.setHeight("80px");
+
         form.add(kcalField, proteinField, carbsField, fatField, fiberField, activityField, weightField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
 
@@ -486,7 +615,8 @@ public abstract class AbstractDietView extends VerticalLayout {
                     fatField.getValue() != null ? fatField.getValue().intValue() : null,
                     fiberField.getValue() != null ? fiberField.getValue().intValue() : null,
                     activityField.getValue() != null ? activityField.getValue().intValue() : 0,
-                    weightField.getValue()
+                    weightField.getValue(),
+                    notesField.getValue().isBlank() ? null : notesField.getValue()
             );
             currentDay = dietService.getOrCreateDay(selectedDate);
             refresh();
@@ -495,8 +625,137 @@ public abstract class AbstractDietView extends VerticalLayout {
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         Button cancel = new Button("Cancel", e -> dialog.close());
-        dialog.add(form, new HorizontalLayout(save, cancel));
+        dialog.add(form, notesField, new HorizontalLayout(save, cancel));
         dialog.open();
+    }
+
+    private void openExportDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Export day — " +
+                currentDay.getDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy")));
+        dialog.setWidth("600px");
+
+        String text = buildExportText();
+
+        TextArea textArea = new TextArea();
+        textArea.setValue(text);
+        textArea.setWidthFull();
+        textArea.setHeight("400px");
+        textArea.setReadOnly(true);
+
+        Button copyBtn = new Button("Copy to clipboard", VaadinIcon.CLIPBOARD.create(), e ->
+                copyBtn_click(textArea.getValue()));
+        copyBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button closeBtn = new Button("Close", ev -> dialog.close());
+
+        dialog.add(new VerticalLayout(textArea, new HorizontalLayout(copyBtn, closeBtn)));
+        dialog.open();
+    }
+
+    private void copyBtn_click(String value) {
+        getElement().executeJs(
+                "navigator.clipboard.writeText($0).then(() => {}).catch(() => {" +
+                "  const ta = document.createElement('textarea');" +
+                "  ta.value = $0;" +
+                "  document.body.appendChild(ta);" +
+                "  ta.select();" +
+                "  document.execCommand('copy');" +
+                "  document.body.removeChild(ta);" +
+                "});", value);
+        Notification.show("Copied to clipboard!", 2000, Notification.Position.BOTTOM_CENTER);
+    }
+
+    private String buildExportText() {
+        StringBuilder sb = new StringBuilder();
+        String date = currentDay.getDate().format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"));
+        sb.append("=== Diet log: ").append(date).append(" ===\n\n");
+
+        if (currentDay.getWeightKg() != null)
+            sb.append("Weight: ").append(currentDay.getWeightKg()).append(" kg\n");
+
+        int tKcal = currentDay.getTargetKcal() != null ? currentDay.getTargetKcal() : 0;
+        int tProtein = currentDay.getTargetProtein() != null ? currentDay.getTargetProtein() : 0;
+        int tCarbs = currentDay.getTargetCarbs() != null ? currentDay.getTargetCarbs() : 0;
+        int tFat = currentDay.getTargetFat() != null ? currentDay.getTargetFat() : 0;
+        int tFiber = currentDay.getTargetFiber() != null ? currentDay.getTargetFiber() : 0;
+        int activity = currentDay.getActivityKcal() != null ? currentDay.getActivityKcal() : 0;
+
+        if (tKcal > 0 || tProtein > 0) {
+            sb.append("Targets: ");
+            if (tKcal > 0) sb.append("kcal=").append(tKcal).append(" ");
+            if (tProtein > 0) sb.append("protein=").append(tProtein).append("g ");
+            if (tCarbs > 0) sb.append("carbs=").append(tCarbs).append("g ");
+            if (tFat > 0) sb.append("fat=").append(tFat).append("g ");
+            if (tFiber > 0) sb.append("fiber=").append(tFiber).append("g");
+            sb.append("\n");
+        }
+        if (activity > 0)
+            sb.append("Activity burn: +").append(activity).append(" kcal\n");
+
+        sb.append("\n");
+
+        double totalKcal = 0, totalProtein = 0, totalFat = 0, totalCarbs = 0, totalFiber = 0;
+
+        for (DietMeal.MealType type : DietMeal.MealType.values()) {
+            DietMeal meal = currentDay.getMeals().stream()
+                    .filter(m -> m.getMealType() == type && !Boolean.TRUE.equals(m.isDeleted()))
+                    .findFirst().orElse(null);
+            List<DietMealItem> items = meal != null
+                    ? meal.getItems().stream().filter(i -> !Boolean.TRUE.equals(i.isDeleted())).toList()
+                    : List.of();
+            if (items.isEmpty()) continue;
+
+            double mKcal = items.stream().mapToDouble(DietMealItem::getEffectiveKcal).sum();
+            double mProtein = items.stream().mapToDouble(DietMealItem::getEffectiveProtein).sum();
+            double mFat = items.stream().mapToDouble(DietMealItem::getEffectiveFat).sum();
+            double mCarbs = items.stream().mapToDouble(DietMealItem::getEffectiveCarbs).sum();
+            double mFiber = items.stream().mapToDouble(DietMealItem::getEffectiveFiber).sum();
+
+            sb.append("--- ").append(type.getDisplayName()).append(" ---\n");
+            for (DietMealItem item : items) {
+                sb.append("  • ").append(item.getDisplayName());
+                sb.append("  (").append(fmt(item.getEffectiveKcal())).append(" kcal");
+                if (item.getEffectiveProtein() > 0) sb.append(", ").append(fmt(item.getEffectiveProtein())).append("g P");
+                if (item.getEffectiveFat() > 0) sb.append(", ").append(fmt(item.getEffectiveFat())).append("g F");
+                if (item.getEffectiveCarbs() > 0) sb.append(", ").append(fmt(item.getEffectiveCarbs())).append("g C");
+                if (item.getEffectiveFiber() > 0) sb.append(", ").append(fmt(item.getEffectiveFiber())).append("g Fi");
+                sb.append(")\n");
+            }
+            sb.append("  Total: ").append(fmt(mKcal)).append(" kcal | ")
+                    .append(fmt(mProtein)).append("g P | ")
+                    .append(fmt(mFat)).append("g F | ")
+                    .append(fmt(mCarbs)).append("g C | ")
+                    .append(fmt(mFiber)).append("g Fi\n\n");
+
+            totalKcal += mKcal;
+            totalProtein += mProtein;
+            totalFat += mFat;
+            totalCarbs += mCarbs;
+            totalFiber += mFiber;
+        }
+
+        sb.append("=== TOTAL ===\n");
+        sb.append("Calories: ").append(fmt(totalKcal));
+        if (tKcal > 0) sb.append(" / ").append(tKcal).append(" (remaining: ").append(fmt(tKcal + activity - totalKcal)).append(")");
+        sb.append("\n");
+        sb.append("Protein:  ").append(fmt(totalProtein)).append("g");
+        if (tProtein > 0) sb.append(" / ").append(tProtein).append("g (remaining: ").append(fmt(tProtein - totalProtein)).append("g)");
+        sb.append("\n");
+        sb.append("Fat:      ").append(fmt(totalFat)).append("g");
+        if (tFat > 0) sb.append(" / ").append(tFat).append("g (remaining: ").append(fmt(tFat - totalFat)).append("g)");
+        sb.append("\n");
+        sb.append("Carbs:    ").append(fmt(totalCarbs)).append("g");
+        if (tCarbs > 0) sb.append(" / ").append(tCarbs).append("g (remaining: ").append(fmt(tCarbs - totalCarbs)).append("g)");
+        sb.append("\n");
+        sb.append("Fiber:    ").append(fmt(totalFiber)).append("g");
+        if (tFiber > 0) sb.append(" / ").append(tFiber).append("g (remaining: ").append(fmt(tFiber - totalFiber)).append("g)");
+        sb.append("\n");
+
+        if (currentDay.getNotes() != null && !currentDay.getNotes().isBlank())
+            sb.append("\nNotes: ").append(currentDay.getNotes()).append("\n");
+
+        return sb.toString();
     }
 
     private String fmt(double val) {
