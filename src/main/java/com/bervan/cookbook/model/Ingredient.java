@@ -16,6 +16,10 @@ import java.util.UUID;
 public class Ingredient extends BervanOwnedBaseEntity<UUID> implements PersistableTableOwnedData<UUID>, ExcelIEEntity<UUID> {
     public static final String Ingredient_name_columnName = "name";
     public static final String Ingredient_category_columnName = "category";
+    public static final String Ingredient_kcalPer100g_columnName = "kcalPer100g";
+    public static final String Ingredient_proteinPer100g_columnName = "proteinPer100g";
+    public static final String Ingredient_fatPer100g_columnName = "fatPer100g";
+    public static final String Ingredient_carbsPer100g_columnName = "carbsPer100g";
 
     @Id
     private UUID id;

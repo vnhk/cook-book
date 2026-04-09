@@ -17,3 +17,43 @@ columns:
     inSaveForm: true
     inEditForm: true
     inTable: true
+
+  - field: kcalPer100g
+    displayName: "Kcal / 100g"
+    internalNameField: "Ingredient_kcalPer100g_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: false
+    min: 0
+    max: 100
+
+  - field: proteinPer100g
+    displayName: "Protein / 100g"
+    internalNameField: "Ingredient_proteinPer100g_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: false
+    min: 0
+    max: 100
+
+  - field: fatPer100g
+    displayName: "Fat / 100g"
+    internalNameField: "Ingredient_fatPer100g_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: false
+    min: 0
+    max: 100
+
+  - field: carbsPer100g
+    displayName: "Carbs / 100g"
+    internalNameField: "Ingredient_carbsPer100g_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: false
+    min: 0
+    max: 100
