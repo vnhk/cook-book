@@ -67,10 +67,11 @@ public class DietService extends BaseService<UUID, DietDay> {
         save(day);
     }
 
-    public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein, Integer activityKcal) {
+    public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein, Integer activityKcal, Double weightKg) {
         day.setTargetKcal(targetKcal);
         day.setTargetProtein(targetProtein);
         day.setActivityKcal(activityKcal);
+        day.setWeightKg(weightKg);
         save(day);
     }
 

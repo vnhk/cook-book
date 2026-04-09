@@ -139,8 +139,29 @@ public abstract class AbstractDietView extends VerticalLayout {
         double remainingProtein = targetProtein - protein;
 
         String dateLabel = currentDay.getDate().format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"));
+        HorizontalLayout titleRow = new HorizontalLayout();
+        titleRow.setWidthFull();
+        titleRow.setAlignItems(Alignment.CENTER);
+        titleRow.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        titleRow.getStyle().set("margin-bottom", "12px");
+
         H3 title = new H3(dateLabel);
-        title.getStyle().set("margin", "0 0 12px 0");
+        title.getStyle().set("margin", "0");
+
+        if (currentDay.getWeightKg() != null) {
+            Span weightSpan = new Span(currentDay.getWeightKg() + " kg");
+            weightSpan.getStyle()
+                    .set("font-size", "var(--bervan-font-size-lg)")
+                    .set("font-weight", "600")
+                    .set("color", "var(--bervan-text-primary)")
+                    .set("background", "var(--bervan-surface-2)")
+                    .set("border", "1px solid var(--bervan-border-color)")
+                    .set("border-radius", "6px")
+                    .set("padding", "4px 12px");
+            titleRow.add(title, weightSpan);
+        } else {
+            titleRow.add(title);
+        }
 
         HorizontalLayout macroRow = new HorizontalLayout();
         macroRow.setSpacing(true);
@@ -155,7 +176,7 @@ public abstract class AbstractDietView extends VerticalLayout {
                 buildMacroTile("Carbs", fmt(carbs) + "g", "", "", false)
         );
 
-        card.add(title, macroRow);
+        card.add(titleRow, macroRow);
         return card;
     }
 
@@ -204,6 +225,8 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         double mealKcal = items.stream().mapToDouble(DietMealItem::getEffectiveKcal).sum();
         double mealProtein = items.stream().mapToDouble(DietMealItem::getEffectiveProtein).sum();
+        double mealFat = items.stream().mapToDouble(DietMealItem::getEffectiveFat).sum();
+        double mealCarbs = items.stream().mapToDouble(DietMealItem::getEffectiveCarbs).sum();
 
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
@@ -215,11 +238,16 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         HorizontalLayout mealInfo = new HorizontalLayout();
         mealInfo.setSpacing(false);
+        mealInfo.getStyle().set("gap", "10px");
         Span kcalSpan = new Span(fmt(mealKcal) + " kcal");
-        kcalSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)").set("margin-right", "8px");
-        Span proteinSpan = new Span(fmt(mealProtein) + "g protein");
-        proteinSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)");
-        mealInfo.add(kcalSpan, proteinSpan);
+        kcalSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
+        Span proteinSpan = new Span(fmt(mealProtein) + "g P");
+        proteinSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
+        Span fatSpan = new Span(fmt(mealFat) + "g F");
+        fatSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
+        Span carbsSpan = new Span(fmt(mealCarbs) + "g C");
+        carbsSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
+        mealInfo.add(kcalSpan, proteinSpan, fatSpan, carbsSpan);
 
         Button addBtn = new Button("Add", VaadinIcon.PLUS.create(), e -> openAddItemDialog(type));
         addBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
@@ -420,14 +448,20 @@ public abstract class AbstractDietView extends VerticalLayout {
         NumberField activityField = new NumberField("Activity Calories Burned");
         activityField.setValue(currentDay.getActivityKcal() != null ? currentDay.getActivityKcal().doubleValue() : 0.0);
 
-        form.add(kcalField, proteinField, activityField);
+        NumberField weightField = new NumberField("Weight (kg)");
+        weightField.setValue(currentDay.getWeightKg());
+        weightField.setMin(0);
+        weightField.setStep(0.1);
+
+        form.add(kcalField, proteinField, activityField, weightField);
 
         Button save = new Button("Save", e -> {
             dietService.updateDayTargets(
                     currentDay,
                     kcalField.getValue() != null ? kcalField.getValue().intValue() : null,
                     proteinField.getValue() != null ? proteinField.getValue().intValue() : null,
-                    activityField.getValue() != null ? activityField.getValue().intValue() : 0
+                    activityField.getValue() != null ? activityField.getValue().intValue() : 0,
+                    weightField.getValue()
             );
             currentDay = dietService.getOrCreateDay(selectedDate);
             refresh();

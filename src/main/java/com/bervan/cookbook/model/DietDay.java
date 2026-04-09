@@ -21,6 +21,7 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
     private Integer targetKcal;
     private Integer targetProtein;
     private Integer activityKcal;
+    private Double weightKg;
 
     private boolean deleted;
     private LocalDateTime modificationDate;
@@ -61,6 +62,9 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
 
     public Integer getActivityKcal() { return activityKcal; }
     public void setActivityKcal(Integer activityKcal) { this.activityKcal = activityKcal; }
+
+    public Double getWeightKg() { return weightKg; }
+    public void setWeightKg(Double weightKg) { this.weightKg = weightKg; }
 
     public List<DietMeal> getMeals() { return meals; }
     public void setMeals(List<DietMeal> meals) { this.meals = meals; }
