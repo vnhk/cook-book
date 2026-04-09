@@ -120,8 +120,8 @@ public abstract class AbstractDietView extends VerticalLayout {
     private Div buildSummaryCard() {
         Div card = new Div();
         card.getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("background", "var(--bervan-surface-1)")
+                .set("border", "1px solid var(--bervan-border-color)")
                 .set("border-radius", "8px")
                 .set("padding", "16px")
                 .set("margin-bottom", "8px");
@@ -162,23 +162,24 @@ public abstract class AbstractDietView extends VerticalLayout {
     private Div buildMacroTile(String label, String value, String unit, String sub, boolean warning) {
         Div tile = new Div();
         tile.getStyle()
-                .set("background", warning ? "var(--lumo-error-color-10pct)" : "var(--lumo-contrast-5pct)")
+                .set("background", warning ? "rgba(var(--bervan-danger-rgb, 239,68,68), 0.15)" : "var(--bervan-surface-2)")
+                .set("border", "1px solid var(--bervan-border-color)")
                 .set("border-radius", "6px")
                 .set("padding", "10px 14px")
                 .set("min-width", "100px")
                 .set("text-align", "center");
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)").set("display", "block");
+        labelSpan.getStyle().set("font-size", "var(--bervan-font-size-sm)").set("color", "var(--bervan-text-secondary)").set("display", "block");
 
         Span valueSpan = new Span(value + (unit.isEmpty() ? "" : " " + unit));
-        valueSpan.getStyle().set("font-size", "var(--lumo-font-size-l)").set("font-weight", "bold").set("display", "block")
-                .set("color", warning ? "var(--lumo-error-text-color)" : "var(--lumo-body-text-color)");
+        valueSpan.getStyle().set("font-size", "var(--bervan-font-size-lg)").set("font-weight", "bold").set("display", "block")
+                .set("color", warning ? "rgb(var(--bervan-danger-rgb, 239,68,68))" : "var(--bervan-text-primary)");
 
         tile.add(labelSpan, valueSpan);
         if (!sub.isEmpty()) {
             Span subSpan = new Span(sub);
-            subSpan.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-tertiary-text-color)").set("display", "block");
+            subSpan.getStyle().set("font-size", "var(--bervan-font-size-xs)").set("color", "var(--bervan-text-tertiary)").set("display", "block");
             tile.add(subSpan);
         }
         return tile;
@@ -187,7 +188,8 @@ public abstract class AbstractDietView extends VerticalLayout {
     private Div buildMealSection(DietMeal.MealType type) {
         Div section = new Div();
         section.getStyle()
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("background", "var(--bervan-surface-1)")
+                .set("border", "1px solid var(--bervan-border-color)")
                 .set("border-radius", "8px")
                 .set("padding", "12px 16px")
                 .set("margin-bottom", "8px");
@@ -214,9 +216,9 @@ public abstract class AbstractDietView extends VerticalLayout {
         HorizontalLayout mealInfo = new HorizontalLayout();
         mealInfo.setSpacing(false);
         Span kcalSpan = new Span(fmt(mealKcal) + " kcal");
-        kcalSpan.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)").set("margin-right", "8px");
+        kcalSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)").set("margin-right", "8px");
         Span proteinSpan = new Span(fmt(mealProtein) + "g protein");
-        proteinSpan.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
+        proteinSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)");
         mealInfo.add(kcalSpan, proteinSpan);
 
         Button addBtn = new Button("Add", VaadinIcon.PLUS.create(), e -> openAddItemDialog(type));
@@ -253,7 +255,7 @@ public abstract class AbstractDietView extends VerticalLayout {
                 fmt(item.getEffectiveFat()) + "g F  |  " +
                 fmt(item.getEffectiveCarbs()) + "g C"
         );
-        macros.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
+        macros.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)");
 
         Button remove = new Button(VaadinIcon.TRASH.create(), e -> {
             dietService.removeItem(currentDay, item);
@@ -354,7 +356,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         amountField.setMin(0.1);
 
         Div macroPreview = new Div();
-        macroPreview.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)").set("margin-top", "4px");
+        macroPreview.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--bervan-text-secondary)").set("margin-top", "4px");
 
         ingredientCombo.addValueChangeListener(e -> updateMacroPreview(macroPreview, e.getValue(), amountField.getValue()));
         amountField.addValueChangeListener(e -> updateMacroPreview(macroPreview, ingredientCombo.getValue(), e.getValue()));
