@@ -20,6 +20,7 @@ public class Ingredient extends BervanOwnedBaseEntity<UUID> implements Persistab
     public static final String Ingredient_proteinPer100g_columnName = "proteinPer100g";
     public static final String Ingredient_fatPer100g_columnName = "fatPer100g";
     public static final String Ingredient_carbsPer100g_columnName = "carbsPer100g";
+    public static final String Ingredient_fiberPer100g_columnName = "fiberPer100g";
 
     @Id
     private UUID id;
@@ -40,6 +41,7 @@ public class Ingredient extends BervanOwnedBaseEntity<UUID> implements Persistab
     private Double proteinPer100g;
     private Double fatPer100g;
     private Double carbsPer100g;
+    private Double fiberPer100g;
 
     private boolean deleted;
     private LocalDateTime modificationDate;
@@ -155,6 +157,14 @@ public class Ingredient extends BervanOwnedBaseEntity<UUID> implements Persistab
 
     public void setCarbsPer100g(Double carbsPer100g) {
         this.carbsPer100g = carbsPer100g;
+    }
+
+    public Double getFiberPer100g() {
+        return fiberPer100g;
+    }
+
+    public void setFiberPer100g(Double fiberPer100g) {
+        this.fiberPer100g = fiberPer100g;
     }
 
     public boolean hasMacros() {

@@ -24,6 +24,7 @@ public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
     private Double protein;
     private Double fat;
     private Double carbs;
+    private Double fiber;
 
     // Ingredient-based fields
     @ManyToOne(fetch = FetchType.EAGER)
@@ -62,6 +63,13 @@ public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
             return ingredient.getCarbsPer100g() != null ? ingredient.getCarbsPer100g() * amountGrams / 100.0 : 0.0;
         }
         return carbs != null ? carbs : 0.0;
+    }
+
+    public double getEffectiveFiber() {
+        if (ingredient != null && ingredient.hasMacros() && amountGrams != null) {
+            return ingredient.getFiberPer100g() != null ? ingredient.getFiberPer100g() * amountGrams / 100.0 : 0.0;
+        }
+        return fiber != null ? fiber : 0.0;
     }
 
     public String getDisplayName() {
@@ -105,6 +113,9 @@ public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
 
     public Double getCarbs() { return carbs; }
     public void setCarbs(Double carbs) { this.carbs = carbs; }
+
+    public Double getFiber() { return fiber; }
+    public void setFiber(Double fiber) { this.fiber = fiber; }
 
     public Ingredient getIngredient() { return ingredient; }
     public void setIngredient(Ingredient ingredient) { this.ingredient = ingredient; }

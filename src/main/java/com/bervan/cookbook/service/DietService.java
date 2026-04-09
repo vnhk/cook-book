@@ -114,4 +114,13 @@ public class DietService extends BaseService<UUID, DietDay> {
                 .mapToDouble(DietMealItem::getEffectiveCarbs)
                 .sum();
     }
+
+    public double totalFiber(DietDay day) {
+        return day.getMeals().stream()
+                .filter(m -> !Boolean.TRUE.equals(m.isDeleted()))
+                .flatMap(m -> m.getItems().stream())
+                .filter(i -> !Boolean.TRUE.equals(i.isDeleted()))
+                .mapToDouble(DietMealItem::getEffectiveFiber)
+                .sum();
+    }
 }

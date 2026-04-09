@@ -57,3 +57,13 @@ columns:
     required: false
     min: 0
     max: 100
+
+  - field: fiberPer100g
+    displayName: "Fiber / 100g"
+    internalNameField: "Ingredient_fiberPer100g_columnName"
+    inSaveForm: true
+    inEditForm: true
+    inTable: true
+    required: false
+    min: 0
+    max: 100

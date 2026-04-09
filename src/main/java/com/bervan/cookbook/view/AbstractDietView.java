@@ -130,6 +130,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         double protein = dietService.totalProtein(currentDay);
         double fat = dietService.totalFat(currentDay);
         double carbs = dietService.totalCarbs(currentDay);
+        double fiber = dietService.totalFiber(currentDay);
 
         int targetKcal = currentDay.getTargetKcal() != null ? currentDay.getTargetKcal() : 0;
         int targetProtein = currentDay.getTargetProtein() != null ? currentDay.getTargetProtein() : 0;
@@ -173,7 +174,8 @@ public abstract class AbstractDietView extends VerticalLayout {
                 buildMacroTile("Protein", fmt(protein) + "g", "", targetProtein > 0 ? "/ " + targetProtein + "g" : "", false),
                 buildMacroTile("Protein left", fmt(remainingProtein) + "g", "", "", remainingProtein < 0),
                 buildMacroTile("Fat", fmt(fat) + "g", "", "", false),
-                buildMacroTile("Carbs", fmt(carbs) + "g", "", "", false)
+                buildMacroTile("Carbs", fmt(carbs) + "g", "", "", false),
+                buildMacroTile("Fiber", fmt(fiber) + "g", "", "", false)
         );
 
         card.add(titleRow, macroRow);
@@ -227,6 +229,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         double mealProtein = items.stream().mapToDouble(DietMealItem::getEffectiveProtein).sum();
         double mealFat = items.stream().mapToDouble(DietMealItem::getEffectiveFat).sum();
         double mealCarbs = items.stream().mapToDouble(DietMealItem::getEffectiveCarbs).sum();
+        double mealFiber = items.stream().mapToDouble(DietMealItem::getEffectiveFiber).sum();
 
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
@@ -247,7 +250,9 @@ public abstract class AbstractDietView extends VerticalLayout {
         fatSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
         Span carbsSpan = new Span(fmt(mealCarbs) + "g C");
         carbsSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
-        mealInfo.add(kcalSpan, proteinSpan, fatSpan, carbsSpan);
+        Span fiberSpan = new Span(fmt(mealFiber) + "g Fi");
+        fiberSpan.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
+        mealInfo.add(kcalSpan, proteinSpan, fatSpan, carbsSpan, fiberSpan);
 
         Button addBtn = new Button("Add", VaadinIcon.PLUS.create(), e -> openAddItemDialog(type));
         addBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
@@ -281,7 +286,8 @@ public abstract class AbstractDietView extends VerticalLayout {
                 fmt(item.getEffectiveKcal()) + " kcal  |  " +
                 fmt(item.getEffectiveProtein()) + "g P  |  " +
                 fmt(item.getEffectiveFat()) + "g F  |  " +
-                fmt(item.getEffectiveCarbs()) + "g C"
+                fmt(item.getEffectiveCarbs()) + "g C  |  " +
+                fmt(item.getEffectiveFiber()) + "g Fi"
         );
         macros.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)");
 
@@ -332,8 +338,9 @@ public abstract class AbstractDietView extends VerticalLayout {
         NumberField proteinField = new NumberField("Protein (g)");
         NumberField fatField = new NumberField("Fat (g)");
         NumberField carbsField = new NumberField("Carbs (g)");
+        NumberField fiberField = new NumberField("Fiber (g)");
 
-        form.add(descField, kcalField, proteinField, fatField, carbsField);
+        form.add(descField, kcalField, proteinField, fatField, carbsField, fiberField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
 
         Button save = new Button("Add", e -> {
@@ -347,6 +354,7 @@ public abstract class AbstractDietView extends VerticalLayout {
             item.setProtein(proteinField.getValue());
             item.setFat(fatField.getValue());
             item.setCarbs(carbsField.getValue());
+            item.setFiber(fiberField.getValue());
 
             DietMeal meal = dietService.getOrCreateMeal(currentDay, mealType);
             currentDay = dietService.getOrCreateDay(selectedDate);
@@ -431,7 +439,8 @@ public abstract class AbstractDietView extends VerticalLayout {
         double protein = ingredient.getProteinPer100g() != null ? ingredient.getProteinPer100g() * grams / 100.0 : 0;
         double fat = ingredient.getFatPer100g() != null ? ingredient.getFatPer100g() * grams / 100.0 : 0;
         double carbs = ingredient.getCarbsPer100g() != null ? ingredient.getCarbsPer100g() * grams / 100.0 : 0;
-        preview.setText(String.format("%.0f kcal  |  %.1fg protein  |  %.1fg fat  |  %.1fg carbs", kcal, protein, fat, carbs));
+        double fiber2 = ingredient.getFiberPer100g() != null ? ingredient.getFiberPer100g() * grams / 100.0 : 0;
+        preview.setText(String.format("%.0f kcal  |  %.1fg P  |  %.1fg F  |  %.1fg C  |  %.1fg Fi", kcal, protein, fat, carbs, fiber2));
     }
 
     private void openGoalsDialog() {
