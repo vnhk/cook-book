@@ -95,10 +95,10 @@ public abstract class AbstractDietView extends VerticalLayout {
             }
         });
 
-        Button goalsBtn = new Button("Set Goals", VaadinIcon.COG.create(), e -> openGoalsDialog());
-        goalsBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        Button configButton = new Button("Set Data", VaadinIcon.COG.create(), e -> openDataDialog());
+        configButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        bar.add(prev, datePicker, next, today, goalsBtn);
+        bar.add(prev, datePicker, next, today, configButton);
         return bar;
     }
 
@@ -443,9 +443,9 @@ public abstract class AbstractDietView extends VerticalLayout {
         preview.setText(String.format("%.0f kcal  |  %.1fg P  |  %.1fg F  |  %.1fg C  |  %.1fg Fi", kcal, protein, fat, carbs, fiber2));
     }
 
-    private void openGoalsDialog() {
+    private void openDataDialog() {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Daily Goals");
+        dialog.setHeaderTitle("Daily Data");
 
         FormLayout form = new FormLayout();
         NumberField kcalField = new NumberField("Target Calories (kcal)");
