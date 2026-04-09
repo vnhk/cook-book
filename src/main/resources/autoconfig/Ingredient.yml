@@ -26,7 +26,7 @@ columns:
     inTable: true
     required: false
     min: 0
-    max: 100
+    max: 2000
 
   - field: proteinPer100g
     displayName: "Protein / 100g"
