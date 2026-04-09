@@ -12,6 +12,7 @@ public class CookBookPageLayout extends MenuNavigationComponent {
         addButtonIfVisible(menuButtonsRow, AbstractShoppingCartView.ROUTE_NAME, "Cart", VaadinIcon.CART.create());
         addButtonIfVisible(menuButtonsRow, AbstractRecipeSearchView.ROUTE_NAME, "Search", VaadinIcon.SEARCH.create());
         addButtonIfVisible(menuButtonsRow, AbstractRecipeDetailView.ROUTE_NAME, "Recipe", VaadinIcon.FILE_TEXT.create());
+        addButtonIfVisible(menuButtonsRow, AbstractDietView.ROUTE_NAME, "Diet", VaadinIcon.HEART.create());
 
         add(menuButtonsRow);
     }
