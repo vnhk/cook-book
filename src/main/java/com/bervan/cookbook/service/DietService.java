@@ -50,7 +50,7 @@ public class DietService extends BaseService<UUID, DietDay> {
                     meal.setId(UUID.randomUUID());
                     meal.setMealType(type);
                     meal.setDietDay(day);
-                    meal.getOwners().addAll(day.getOwners());
+                    day.getOwners().forEach(meal::addOwner);
                     day.getMeals().add(meal);
                     save(day);
                     return day.getMeals().stream()
@@ -62,7 +62,7 @@ public class DietService extends BaseService<UUID, DietDay> {
     public void addItemToMeal(DietDay day, DietMeal meal, DietMealItem item) {
         item.setId(UUID.randomUUID());
         item.setMeal(meal);
-        item.getOwners().addAll(day.getOwners());
+        day.getOwners().forEach(item::addOwner);
         meal.getItems().add(item);
         save(day);
     }
@@ -121,7 +121,7 @@ public class DietService extends BaseService<UUID, DietDay> {
             copy.setIngredient(source.getIngredient());
             copy.setAmountGrams(source.getAmountGrams());
             copy.setMeal(targetMeal);
-            copy.getOwners().addAll(freshTarget.getOwners());
+            freshTarget.getOwners().forEach(copy::addOwner);
             targetMeal.getItems().add(copy);
         }
         save(freshTarget);

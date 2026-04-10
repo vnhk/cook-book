@@ -177,32 +177,27 @@ public abstract class AbstractDietView extends VerticalLayout {
         HorizontalLayout macroRow = new HorizontalLayout();
         macroRow.setSpacing(true);
         macroRow.setWidthFull();
-
         macroRow.add(
                 buildMacroTile("Calories", fmt(consumed), "kcal", targetKcal > 0 ? "/ " + targetKcal : "", false),
-                buildMacroTile("Remaining", fmt(remainingKcal), "kcal", activity > 0 ? "(+" + activity + " activity)" : "", remainingKcal < 0),
                 buildMacroTile("Protein", fmt(protein) + "g", "", targetProtein > 0 ? "/ " + targetProtein + "g" : "", false),
-                buildMacroTile("Protein left", fmt(remainingProtein) + "g", "", "", remainingProtein < 0),
                 buildMacroTile("Fat", fmt(fat) + "g", "", targetFat > 0 ? "/ " + targetFat + "g" : "", false),
                 buildMacroTile("Carbs", fmt(carbs) + "g", "", targetCarbs > 0 ? "/ " + targetCarbs + "g" : "", false),
                 buildMacroTile("Fiber", fmt(fiber) + "g", "", targetFiber > 0 ? "/ " + targetFiber + "g" : "", false)
         );
 
-        card.add(titleRow, macroRow);
+        HorizontalLayout remainingRow = new HorizontalLayout();
+        remainingRow.setSpacing(true);
+        remainingRow.setWidthFull();
+        remainingRow.getStyle().set("margin-top", "8px");
+        remainingRow.add(
+                buildMacroTile("Kcal left", fmt(remainingKcal), "kcal", activity > 0 ? "(+" + activity + " act.)" : "", remainingKcal < 0),
+                buildMacroTile("Protein left", fmt(remainingProtein) + "g", "", "", remainingProtein < 0),
+                buildMacroTile("Fat left", fmt(remainingFat) + "g", "", "", remainingFat < 0),
+                buildMacroTile("Carbs left", fmt(remainingCarbs) + "g", "", "", remainingCarbs < 0),
+                buildMacroTile("Fiber left", fmt(remainingFiber) + "g", "", "", remainingFiber < 0)
+        );
 
-        if (targetFat > 0 || targetCarbs > 0 || targetFiber > 0) {
-            HorizontalLayout remainingRow = new HorizontalLayout();
-            remainingRow.setSpacing(true);
-            remainingRow.setWidthFull();
-            remainingRow.getStyle().set("margin-top", "8px");
-            if (targetFat > 0)
-                remainingRow.add(buildMacroTile("Fat left", fmt(remainingFat) + "g", "", "", remainingFat < 0));
-            if (targetCarbs > 0)
-                remainingRow.add(buildMacroTile("Carbs left", fmt(remainingCarbs) + "g", "", "", remainingCarbs < 0));
-            if (targetFiber > 0)
-                remainingRow.add(buildMacroTile("Fiber left", fmt(remainingFiber) + "g", "", "", remainingFiber < 0));
-            card.add(remainingRow);
-        }
+        card.add(titleRow, macroRow, remainingRow);
 
         if (currentDay.getNotes() != null && !currentDay.getNotes().isBlank()) {
             Div notesDiv = new Div();
