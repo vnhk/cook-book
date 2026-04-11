@@ -31,11 +31,13 @@ public class DietService extends BaseService<UUID, DietDay> {
             day.setDate(date);
             dietDayRepository.findByDateAndDeletedFalse(date.minusDays(1)).ifPresent(prev -> {
                 day.setTargetKcal(prev.getTargetKcal());
+                day.setEstimatedDailyKcal(prev.getEstimatedDailyKcal());
                 day.setTargetProtein(prev.getTargetProtein());
                 day.setTargetCarbs(prev.getTargetCarbs());
                 day.setTargetFat(prev.getTargetFat());
                 day.setTargetFiber(prev.getTargetFiber());
                 day.setActivityKcal(prev.getActivityKcal());
+                day.setActivityKcalPercent(prev.getActivityKcalPercent());
                 day.setAge(prev.getAge());
                 day.setGender(prev.getGender());
                 day.setHeightCm(prev.getHeightCm());
@@ -78,16 +80,19 @@ public class DietService extends BaseService<UUID, DietDay> {
         save(day);
     }
 
-    public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein,
-                                  Integer targetCarbs, Integer targetFat, Integer targetFiber,
-                                  Integer activityKcal, Double weightKg, String notes,
-                                  Integer age, String gender, Integer heightCm, String activityLevel) {
+    public void updateDayTargets(DietDay day, Integer targetKcal, Integer estimatedDailyKcal,
+                                  Integer targetProtein, Integer targetCarbs, Integer targetFat,
+                                  Integer targetFiber, Integer activityKcal, Integer activityKcalPercent,
+                                  Double weightKg, String notes, Integer age, String gender,
+                                  Integer heightCm, String activityLevel) {
         day.setTargetKcal(targetKcal);
+        day.setEstimatedDailyKcal(estimatedDailyKcal);
         day.setTargetProtein(targetProtein);
         day.setTargetCarbs(targetCarbs);
         day.setTargetFat(targetFat);
         day.setTargetFiber(targetFiber);
         day.setActivityKcal(activityKcal);
+        day.setActivityKcalPercent(activityKcalPercent);
         day.setWeightKg(weightKg);
         day.setNotes(notes);
         day.setAge(age);

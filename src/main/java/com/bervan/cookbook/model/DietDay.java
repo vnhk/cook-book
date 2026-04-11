@@ -19,11 +19,13 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
     private LocalDate date;
 
     private Integer targetKcal;
+    private Integer estimatedDailyKcal;
     private Integer targetProtein;
     private Integer targetCarbs;
     private Integer targetFat;
     private Integer targetFiber;
     private Integer activityKcal;
+    private Integer activityKcalPercent;
     private Double weightKg;
     private Integer age;
     private String gender; // "M" or "F"
@@ -67,6 +69,9 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
     public Integer getTargetKcal() { return targetKcal; }
     public void setTargetKcal(Integer targetKcal) { this.targetKcal = targetKcal; }
 
+    public Integer getEstimatedDailyKcal() { return estimatedDailyKcal; }
+    public void setEstimatedDailyKcal(Integer estimatedDailyKcal) { this.estimatedDailyKcal = estimatedDailyKcal; }
+
     public Integer getTargetProtein() { return targetProtein; }
     public void setTargetProtein(Integer targetProtein) { this.targetProtein = targetProtein; }
 
@@ -81,6 +86,9 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
 
     public Integer getActivityKcal() { return activityKcal; }
     public void setActivityKcal(Integer activityKcal) { this.activityKcal = activityKcal; }
+
+    public Integer getActivityKcalPercent() { return activityKcalPercent; }
+    public void setActivityKcalPercent(Integer activityKcalPercent) { this.activityKcalPercent = activityKcalPercent; }
 
     public Double getWeightKg() { return weightKg; }
     public void setWeightKg(Double weightKg) { this.weightKg = weightKg; }

@@ -1,5 +1,6 @@
 package com.bervan.cookbook.view;
 
+import com.bervan.common.view.AbstractPageView;
 import com.bervan.cookbook.model.DietDay;
 import com.bervan.cookbook.model.DietMeal;
 import com.bervan.cookbook.model.DietMealItem;
@@ -18,11 +19,11 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.shared.Tooltip;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.NumberField;
@@ -36,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 @CssImport("./bervan-cookbook.css")
-public abstract class AbstractDietView extends VerticalLayout {
+public abstract class AbstractDietView extends AbstractPageView {
 
     public static final String ROUTE_NAME = "/cook-book/diet";
 
@@ -155,8 +156,10 @@ public abstract class AbstractDietView extends VerticalLayout {
         int targetFat = currentDay.getTargetFat() != null ? currentDay.getTargetFat() : 0;
         int targetFiber = currentDay.getTargetFiber() != null ? currentDay.getTargetFiber() : 0;
         int activity = currentDay.getActivityKcal() != null ? currentDay.getActivityKcal() : 0;
+        int activityPct = currentDay.getActivityKcalPercent() != null ? currentDay.getActivityKcalPercent() : 100;
+        double effectiveActivity = activity * activityPct / 100.0;
 
-        double remainingKcal = targetKcal + activity - consumed;
+        double remainingKcal = targetKcal + effectiveActivity - consumed;
         double remainingProtein = targetProtein - protein;
         double remainingFat = targetFat - fat;
         double remainingCarbs = targetCarbs - carbs;
@@ -187,6 +190,8 @@ public abstract class AbstractDietView extends VerticalLayout {
             profileChips.add(buildProfileChip(currentDay.getHeightCm() + " cm", null));
         if (currentDay.getWeightKg() != null)
             profileChips.add(buildProfileChip(currentDay.getWeightKg() + " kg", null));
+        if (currentDay.getEstimatedDailyKcal() != null)
+            profileChips.add(buildProfileChip("TDEE: " + currentDay.getEstimatedDailyKcal() + " kcal", null));
 
         if (profileChips.getComponentCount() > 0) {
             titleRow.add(title, profileChips);
@@ -210,7 +215,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         remainingRow.setWidthFull();
         remainingRow.getStyle().set("margin-top", "8px");
         remainingRow.add(
-                buildMacroTile("Kcal left", fmt(remainingKcal), "kcal", activity > 0 ? "(+" + activity + " act.)" : "", remainingKcal < 0),
+                buildMacroTile("Kcal left", fmt(remainingKcal), "kcal", activity > 0 ? "(+" + fmt(effectiveActivity) + " act. " + activityPct + "%)" : "", remainingKcal < 0),
                 buildMacroTile("Protein left", fmt(remainingProtein) + "g", "", "", remainingProtein < 0),
                 buildMacroTile("Fat left", fmt(remainingFat) + "g", "", "", remainingFat < 0),
                 buildMacroTile("Carbs left", fmt(remainingCarbs) + "g", "", "", remainingCarbs < 0),
@@ -351,7 +356,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         row.setWidthFull();
         row.setAlignItems(Alignment.CENTER);
         row.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        row.getStyle().set("border-top", "1px solid var(--lumo-contrast-5pct)").set("padding-top", "6px").set("margin-top", "4px");
+        row.getStyle().set("border-top", "1px solid var(--bervan-border-color)").set("padding-top", "6px").set("margin-top", "4px");
 
         Span name = new Span(item.getDisplayName());
         name.getStyle().set("flex-grow", "1");
@@ -363,7 +368,7 @@ public abstract class AbstractDietView extends VerticalLayout {
                 fmt(item.getEffectiveCarbs()) + "g C  |  " +
                 fmt(item.getEffectiveFiber()) + "g Fi"
         );
-        macros.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--lumo-font-size-s)");
+        macros.getStyle().set("color", "var(--bervan-text-secondary)").set("font-size", "var(--bervan-font-size-sm)");
 
         Button remove = new Button(VaadinIcon.TRASH.create(), e -> {
             dietService.removeItem(currentDay, item);
@@ -419,7 +424,7 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         Button save = new Button("Add", e -> {
             if (kcalField.getValue() == null && proteinField.getValue() == null) {
-                Notification.show("Enter at least calories or protein.");
+                showErrorNotification("Enter at least calories or protein.");
                 return;
             }
             DietMealItem item = new DietMealItem();
@@ -466,7 +471,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         amountField.setMin(0.1);
 
         Div macroPreview = new Div();
-        macroPreview.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--bervan-text-secondary)").set("margin-top", "4px");
+        macroPreview.getStyle().set("font-size", "var(--bervan-font-size-sm)").set("color", "var(--bervan-text-secondary)").set("margin-top", "4px");
 
         ingredientCombo.addValueChangeListener(e -> updateMacroPreview(macroPreview, e.getValue(), amountField.getValue()));
         amountField.addValueChangeListener(e -> updateMacroPreview(macroPreview, ingredientCombo.getValue(), e.getValue()));
@@ -478,7 +483,7 @@ public abstract class AbstractDietView extends VerticalLayout {
             Ingredient selected = ingredientCombo.getValue();
             Double amount = amountField.getValue();
             if (selected == null || amount == null) {
-                Notification.show("Select ingredient and enter amount.");
+                showErrorNotification("Select ingredient and enter amount.");
                 return;
             }
             DietMealItem item = new DietMealItem();
@@ -565,7 +570,7 @@ public abstract class AbstractDietView extends VerticalLayout {
             LocalDate srcDate = sourceDatePicker.getValue();
             DietMeal.MealType srcType = sourceMealCombo.getValue();
             if (srcDate == null || srcType == null) {
-                Notification.show("Select date and meal.");
+                showErrorNotification("Select date and meal.");
                 return;
             }
             dietService.copyMealItems(currentDay, targetType, srcDate, srcType);
@@ -603,8 +608,10 @@ public abstract class AbstractDietView extends VerticalLayout {
         dialog.setWidth("560px");
 
         // --- Targets ---
-        NumberField kcalField = new NumberField("Target Calories (kcal)");
+        NumberField kcalField = new NumberField("Target Calories / Goal (kcal)");
         kcalField.setValue(currentDay.getTargetKcal() != null ? currentDay.getTargetKcal().doubleValue() : null);
+        NumberField estDailyField = new NumberField("Est. Daily Calories / TDEE (kcal)");
+        estDailyField.setValue(currentDay.getEstimatedDailyKcal() != null ? currentDay.getEstimatedDailyKcal().doubleValue() : null);
         NumberField proteinField = new NumberField("Target Protein (g)");
         proteinField.setValue(currentDay.getTargetProtein() != null ? currentDay.getTargetProtein().doubleValue() : null);
         NumberField carbsField = new NumberField("Target Carbs (g)");
@@ -615,8 +622,32 @@ public abstract class AbstractDietView extends VerticalLayout {
         fiberField.setValue(currentDay.getTargetFiber() != null ? currentDay.getTargetFiber().doubleValue() : null);
         NumberField activityField = new NumberField("Activity Calories Burned");
         activityField.setValue(currentDay.getActivityKcal() != null ? currentDay.getActivityKcal().doubleValue() : 0.0);
+        activityField.setWidthFull();
 
-        FormLayout targetsForm = new FormLayout(kcalField, proteinField, carbsField, fatField, fiberField, activityField);
+        Select<Integer> activityPercentSelect = new Select<>();
+        activityPercentSelect.setLabel("Accuracy");
+        activityPercentSelect.setItems(40, 50, 60, 70, 80, 90, 100);
+        activityPercentSelect.setItemLabelGenerator(p -> p + "%");
+        activityPercentSelect.setValue(currentDay.getActivityKcalPercent() != null ? currentDay.getActivityKcalPercent() : 100);
+        activityPercentSelect.setWidth("100px");
+
+        com.vaadin.flow.component.icon.Icon activityInfoIcon = VaadinIcon.QUESTION_CIRCLE_O.create();
+        activityInfoIcon.getStyle()
+                .set("color", "var(--bervan-text-secondary)")
+                .set("cursor", "help")
+                .set("align-self", "flex-end")
+                .set("padding-bottom", "10px")
+                .set("flex-shrink", "0");
+        Tooltip.forComponent(activityInfoIcon).withText(
+                "Fitness trackers often overestimate calorie burn. Select what percentage of the reported activity calories should count toward your daily deficit."
+        );
+
+        HorizontalLayout activityRow = new HorizontalLayout(activityField, activityPercentSelect, activityInfoIcon);
+        activityRow.setWidthFull();
+        activityRow.setAlignItems(Alignment.END);
+        activityRow.setFlexGrow(1, activityField);
+
+        FormLayout targetsForm = new FormLayout(kcalField, estDailyField, proteinField, carbsField, fatField, fiberField);
         targetsForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("300px", 2));
 
         // --- Profile ---
@@ -657,11 +688,11 @@ public abstract class AbstractDietView extends VerticalLayout {
             Double a = ageField.getValue();
             String g = genderGroup.getValue();
             String lvl = activityLevelSelect.getValue();
-            if (w == null || w <= 0) { Notification.show("Enter a valid weight."); return; }
-            if (h == null || h <= 0) { Notification.show("Enter a valid height."); return; }
-            if (a == null || a <= 0) { Notification.show("Enter a valid age."); return; }
-            if (g == null)           { Notification.show("Select gender."); return; }
-            if (lvl == null)         { Notification.show("Select activity level."); return; }
+            if (w == null || w <= 0) { showErrorNotification("Enter a valid weight."); return; }
+            if (h == null || h <= 0) { showErrorNotification("Enter a valid height."); return; }
+            if (a == null || a <= 0) { showErrorNotification("Enter a valid age."); return; }
+            if (g == null)           { showErrorNotification("Select gender."); return; }
+            if (lvl == null)         { showErrorNotification("Select activity level."); return; }
             double bmr = "M".equals(g)
                     ? 10 * w + 6.25 * h - 5 * a + 5
                     : 10 * w + 6.25 * h - 5 * a - 161;
@@ -674,8 +705,8 @@ public abstract class AbstractDietView extends VerticalLayout {
                 default            -> 1.2;
             };
             int tdee = (int) Math.round(bmr * multiplier);
-            kcalField.setValue((double) tdee);
-            Notification.show("TDEE calculated: " + tdee + " kcal", 3000, Notification.Position.BOTTOM_CENTER);
+            estDailyField.setValue((double) tdee);
+            showSuccessNotification("TDEE calculated: " + tdee + " kcal");
         });
         calcBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
         calcBtn.setWidthFull();
@@ -692,11 +723,13 @@ public abstract class AbstractDietView extends VerticalLayout {
             dietService.updateDayTargets(
                     currentDay,
                     kcalField.getValue() != null ? kcalField.getValue().intValue() : null,
+                    estDailyField.getValue() != null ? estDailyField.getValue().intValue() : null,
                     proteinField.getValue() != null ? proteinField.getValue().intValue() : null,
                     carbsField.getValue() != null ? carbsField.getValue().intValue() : null,
                     fatField.getValue() != null ? fatField.getValue().intValue() : null,
                     fiberField.getValue() != null ? fiberField.getValue().intValue() : null,
                     activityField.getValue() != null ? activityField.getValue().intValue() : 0,
+                    activityPercentSelect.getValue(),
                     weightField.getValue(),
                     notesField.getValue().isBlank() ? null : notesField.getValue(),
                     ageField.getValue() != null ? ageField.getValue().intValue() : null,
@@ -712,7 +745,7 @@ public abstract class AbstractDietView extends VerticalLayout {
         Button cancel = new Button("Cancel", e -> dialog.close());
 
         VerticalLayout content = new VerticalLayout(
-                targetsForm, profileForm, activityLevelSelect, calcBtn, notesField,
+                targetsForm, activityRow, profileForm, activityLevelSelect, calcBtn, notesField,
                 new HorizontalLayout(save, cancel));
         content.setPadding(false);
         content.setSpacing(true);
@@ -745,16 +778,18 @@ public abstract class AbstractDietView extends VerticalLayout {
     }
 
     private void copyBtn_click(String value) {
-        getElement().executeJs(
-                "navigator.clipboard.writeText($0).then(() => {}).catch(() => {" +
+        com.vaadin.flow.component.UI.getCurrent().getPage().executeJs(
+                "const text = $0;" +
+                "if (navigator.clipboard && navigator.clipboard.writeText) {" +
+                "  navigator.clipboard.writeText(text).catch(() => fallback(text));" +
+                "} else { fallback(text); }" +
+                "function fallback(t) {" +
                 "  const ta = document.createElement('textarea');" +
-                "  ta.value = $0;" +
-                "  document.body.appendChild(ta);" +
-                "  ta.select();" +
-                "  document.execCommand('copy');" +
-                "  document.body.removeChild(ta);" +
-                "});", value);
-        Notification.show("Copied to clipboard!", 2000, Notification.Position.BOTTOM_CENTER);
+                "  ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';" +
+                "  document.body.appendChild(ta); ta.focus(); ta.select();" +
+                "  document.execCommand('copy'); document.body.removeChild(ta);" +
+                "}", value);
+        showSuccessNotification("Copied to clipboard!");
     }
 
     private String buildExportText() {
@@ -783,6 +818,11 @@ public abstract class AbstractDietView extends VerticalLayout {
         int tFat = currentDay.getTargetFat() != null ? currentDay.getTargetFat() : 0;
         int tFiber = currentDay.getTargetFiber() != null ? currentDay.getTargetFiber() : 0;
         int activity = currentDay.getActivityKcal() != null ? currentDay.getActivityKcal() : 0;
+        int activityPercent = currentDay.getActivityKcalPercent() != null ? currentDay.getActivityKcalPercent() : 100;
+        int effectiveActivityKcal = (int) Math.round(activity * activityPercent / 100.0);
+
+        if (currentDay.getEstimatedDailyKcal() != null)
+            sb.append("Est. Daily Calories (TDEE): ").append(currentDay.getEstimatedDailyKcal()).append(" kcal\n");
 
         if (tKcal > 0 || tProtein > 0) {
             sb.append("Targets: ");
@@ -793,8 +833,12 @@ public abstract class AbstractDietView extends VerticalLayout {
             if (tFiber > 0) sb.append("fiber=").append(tFiber).append("g");
             sb.append("\n");
         }
-        if (activity > 0)
-            sb.append("Activity burn: +").append(activity).append(" kcal\n");
+        if (activity > 0) {
+            sb.append("Activity burn: +").append(activity).append(" kcal");
+            if (activityPercent < 100)
+                sb.append(" (counted ").append(activityPercent).append("% = +").append(effectiveActivityKcal).append(" kcal)");
+            sb.append("\n");
+        }
 
         sb.append("\n");
 
@@ -840,7 +884,7 @@ public abstract class AbstractDietView extends VerticalLayout {
 
         sb.append("=== TOTAL ===\n");
         sb.append("Calories: ").append(fmt(totalKcal));
-        if (tKcal > 0) sb.append(" / ").append(tKcal).append(" (remaining: ").append(fmt(tKcal + activity - totalKcal)).append(")");
+        if (tKcal > 0) sb.append(" / ").append(tKcal).append(" (remaining: ").append(fmt(tKcal + effectiveActivityKcal - totalKcal)).append(")");
         sb.append("\n");
         sb.append("Protein:  ").append(fmt(totalProtein)).append("g");
         if (tProtein > 0) sb.append(" / ").append(tProtein).append("g (remaining: ").append(fmt(tProtein - totalProtein)).append("g)");
