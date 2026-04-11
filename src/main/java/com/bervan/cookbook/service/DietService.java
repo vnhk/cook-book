@@ -36,6 +36,10 @@ public class DietService extends BaseService<UUID, DietDay> {
                 day.setTargetFat(prev.getTargetFat());
                 day.setTargetFiber(prev.getTargetFiber());
                 day.setActivityKcal(prev.getActivityKcal());
+                day.setAge(prev.getAge());
+                day.setGender(prev.getGender());
+                day.setHeightCm(prev.getHeightCm());
+                day.setActivityLevel(prev.getActivityLevel());
             });
             return save(day);
         });
@@ -76,7 +80,8 @@ public class DietService extends BaseService<UUID, DietDay> {
 
     public void updateDayTargets(DietDay day, Integer targetKcal, Integer targetProtein,
                                   Integer targetCarbs, Integer targetFat, Integer targetFiber,
-                                  Integer activityKcal, Double weightKg, String notes) {
+                                  Integer activityKcal, Double weightKg, String notes,
+                                  Integer age, String gender, Integer heightCm, String activityLevel) {
         day.setTargetKcal(targetKcal);
         day.setTargetProtein(targetProtein);
         day.setTargetCarbs(targetCarbs);
@@ -85,6 +90,10 @@ public class DietService extends BaseService<UUID, DietDay> {
         day.setActivityKcal(activityKcal);
         day.setWeightKg(weightKg);
         day.setNotes(notes);
+        day.setAge(age);
+        day.setGender(gender);
+        day.setHeightCm(heightCm);
+        day.setActivityLevel(activityLevel);
         save(day);
     }
 

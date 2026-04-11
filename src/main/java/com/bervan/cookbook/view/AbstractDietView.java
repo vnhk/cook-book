@@ -21,6 +21,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.NumberField;
@@ -29,12 +31,23 @@ import com.vaadin.flow.component.textfield.TextField;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @CssImport("./bervan-cookbook.css")
 public abstract class AbstractDietView extends VerticalLayout {
 
     public static final String ROUTE_NAME = "/cook-book/diet";
+
+    private static final Map<String, String> ACTIVITY_LEVELS = new LinkedHashMap<>();
+    static {
+        ACTIVITY_LEVELS.put("SEDENTARY",   "Sedentary (desk job, no exercise)");
+        ACTIVITY_LEVELS.put("LIGHT",       "Light (1-3x/week)");
+        ACTIVITY_LEVELS.put("MODERATE",    "Moderate (3-5x/week)");
+        ACTIVITY_LEVELS.put("ACTIVE",      "Active (6-7x/week)");
+        ACTIVITY_LEVELS.put("VERY_ACTIVE", "Very Active (athlete / physical job)");
+    }
 
     private final DietService dietService;
     private final IngredientService ingredientService;
@@ -159,17 +172,24 @@ public abstract class AbstractDietView extends VerticalLayout {
         H3 title = new H3(dateLabel);
         title.getStyle().set("margin", "0");
 
-        if (currentDay.getWeightKg() != null) {
-            Span weightSpan = new Span(currentDay.getWeightKg() + " kg");
-            weightSpan.getStyle()
-                    .set("font-size", "var(--bervan-font-size-lg)")
-                    .set("font-weight", "600")
-                    .set("color", "var(--bervan-text-primary)")
-                    .set("background", "var(--bervan-surface-2)")
-                    .set("border", "1px solid var(--bervan-border-color)")
-                    .set("border-radius", "6px")
-                    .set("padding", "4px 12px");
-            titleRow.add(title, weightSpan);
+        HorizontalLayout profileChips = new HorizontalLayout();
+        profileChips.setSpacing(true);
+        profileChips.setAlignItems(Alignment.CENTER);
+
+        if ("M".equals(currentDay.getGender())) {
+            profileChips.add(buildProfileChip("♂", null));
+        } else if ("F".equals(currentDay.getGender())) {
+            profileChips.add(buildProfileChip("♀", null));
+        }
+        if (currentDay.getAge() != null)
+            profileChips.add(buildProfileChip(currentDay.getAge() + "y", null));
+        if (currentDay.getHeightCm() != null)
+            profileChips.add(buildProfileChip(currentDay.getHeightCm() + " cm", null));
+        if (currentDay.getWeightKg() != null)
+            profileChips.add(buildProfileChip(currentDay.getWeightKg() + " kg", null));
+
+        if (profileChips.getComponentCount() > 0) {
+            titleRow.add(title, profileChips);
         } else {
             titleRow.add(title);
         }
@@ -241,6 +261,19 @@ public abstract class AbstractDietView extends VerticalLayout {
             tile.add(subSpan);
         }
         return tile;
+    }
+
+    private Span buildProfileChip(String text, String color) {
+        Span chip = new Span(text);
+        chip.getStyle()
+                .set("font-size", "var(--bervan-font-size-lg)")
+                .set("font-weight", "600")
+                .set("color", color != null ? color : "var(--bervan-text-primary)")
+                .set("background", "var(--bervan-surface-2)")
+                .set("border", "1px solid var(--bervan-border-color)")
+                .set("border-radius", "6px")
+                .set("padding", "4px 10px");
+        return chip;
     }
 
     private Div buildMealSection(DietMeal.MealType type) {
@@ -567,40 +600,94 @@ public abstract class AbstractDietView extends VerticalLayout {
     private void openDataDialog() {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Daily Data");
+        dialog.setWidth("560px");
 
-        FormLayout form = new FormLayout();
+        // --- Targets ---
         NumberField kcalField = new NumberField("Target Calories (kcal)");
         kcalField.setValue(currentDay.getTargetKcal() != null ? currentDay.getTargetKcal().doubleValue() : null);
-
         NumberField proteinField = new NumberField("Target Protein (g)");
         proteinField.setValue(currentDay.getTargetProtein() != null ? currentDay.getTargetProtein().doubleValue() : null);
-
         NumberField carbsField = new NumberField("Target Carbs (g)");
         carbsField.setValue(currentDay.getTargetCarbs() != null ? currentDay.getTargetCarbs().doubleValue() : null);
-
         NumberField fatField = new NumberField("Target Fat (g)");
         fatField.setValue(currentDay.getTargetFat() != null ? currentDay.getTargetFat().doubleValue() : null);
-
         NumberField fiberField = new NumberField("Target Fiber (g)");
         fiberField.setValue(currentDay.getTargetFiber() != null ? currentDay.getTargetFiber().doubleValue() : null);
-
         NumberField activityField = new NumberField("Activity Calories Burned");
         activityField.setValue(currentDay.getActivityKcal() != null ? currentDay.getActivityKcal().doubleValue() : 0.0);
 
+        FormLayout targetsForm = new FormLayout(kcalField, proteinField, carbsField, fatField, fiberField, activityField);
+        targetsForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("300px", 2));
+
+        // --- Profile ---
         NumberField weightField = new NumberField("Weight (kg)");
         weightField.setValue(currentDay.getWeightKg());
         weightField.setMin(0);
         weightField.setStep(0.1);
 
+        NumberField heightField = new NumberField("Height (cm)");
+        heightField.setValue(currentDay.getHeightCm() != null ? currentDay.getHeightCm().doubleValue() : null);
+        heightField.setMin(100);
+        heightField.setMax(250);
+
+        NumberField ageField = new NumberField("Age");
+        ageField.setValue(currentDay.getAge() != null ? currentDay.getAge().doubleValue() : null);
+        ageField.setMin(10);
+        ageField.setMax(120);
+
+        RadioButtonGroup<String> genderGroup = new RadioButtonGroup<>("Gender");
+        genderGroup.setItems("M", "F");
+        genderGroup.setItemLabelGenerator(g -> "M".equals(g) ? "♂ Male" : "♀ Female");
+        if (currentDay.getGender() != null) genderGroup.setValue(currentDay.getGender());
+
+        Select<String> activityLevelSelect = new Select<>();
+        activityLevelSelect.setLabel("Activity level");
+        activityLevelSelect.setItems(ACTIVITY_LEVELS.keySet().stream().toList());
+        activityLevelSelect.setItemLabelGenerator(k -> ACTIVITY_LEVELS.getOrDefault(k, k));
+        activityLevelSelect.setWidthFull();
+        if (currentDay.getActivityLevel() != null) activityLevelSelect.setValue(currentDay.getActivityLevel());
+
+        FormLayout profileForm = new FormLayout(weightField, heightField, ageField, genderGroup);
+        profileForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("300px", 2));
+
+        // --- Calculate TDEE button ---
+        Button calcBtn = new Button("Calculate TDEE →", VaadinIcon.CALC.create(), e -> {
+            Double w = weightField.getValue();
+            Double h = heightField.getValue();
+            Double a = ageField.getValue();
+            String g = genderGroup.getValue();
+            String lvl = activityLevelSelect.getValue();
+            if (w == null || w <= 0) { Notification.show("Enter a valid weight."); return; }
+            if (h == null || h <= 0) { Notification.show("Enter a valid height."); return; }
+            if (a == null || a <= 0) { Notification.show("Enter a valid age."); return; }
+            if (g == null)           { Notification.show("Select gender."); return; }
+            if (lvl == null)         { Notification.show("Select activity level."); return; }
+            double bmr = "M".equals(g)
+                    ? 10 * w + 6.25 * h - 5 * a + 5
+                    : 10 * w + 6.25 * h - 5 * a - 161;
+            double multiplier = switch (lvl) {
+                case "SEDENTARY"   -> 1.2;
+                case "LIGHT"       -> 1.375;
+                case "MODERATE"    -> 1.55;
+                case "ACTIVE"      -> 1.725;
+                case "VERY_ACTIVE" -> 1.9;
+                default            -> 1.2;
+            };
+            int tdee = (int) Math.round(bmr * multiplier);
+            kcalField.setValue((double) tdee);
+            Notification.show("TDEE calculated: " + tdee + " kcal", 3000, Notification.Position.BOTTOM_CENTER);
+        });
+        calcBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        calcBtn.setWidthFull();
+
+        // --- Notes ---
         TextArea notesField = new TextArea("Notes");
         notesField.setValue(currentDay.getNotes() != null ? currentDay.getNotes() : "");
         notesField.setWidthFull();
         notesField.setMaxLength(1000);
         notesField.setHeight("80px");
 
-        form.add(kcalField, proteinField, carbsField, fatField, fiberField, activityField, weightField);
-        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
-
+        // --- Save ---
         Button save = new Button("Save", e -> {
             dietService.updateDayTargets(
                     currentDay,
@@ -611,16 +698,25 @@ public abstract class AbstractDietView extends VerticalLayout {
                     fiberField.getValue() != null ? fiberField.getValue().intValue() : null,
                     activityField.getValue() != null ? activityField.getValue().intValue() : 0,
                     weightField.getValue(),
-                    notesField.getValue().isBlank() ? null : notesField.getValue()
+                    notesField.getValue().isBlank() ? null : notesField.getValue(),
+                    ageField.getValue() != null ? ageField.getValue().intValue() : null,
+                    genderGroup.getValue(),
+                    heightField.getValue() != null ? heightField.getValue().intValue() : null,
+                    activityLevelSelect.getValue()
             );
             currentDay = dietService.getOrCreateDay(selectedDate);
             refresh();
             dialog.close();
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
         Button cancel = new Button("Cancel", e -> dialog.close());
-        dialog.add(form, notesField, new HorizontalLayout(save, cancel));
+
+        VerticalLayout content = new VerticalLayout(
+                targetsForm, profileForm, activityLevelSelect, calcBtn, notesField,
+                new HorizontalLayout(save, cancel));
+        content.setPadding(false);
+        content.setSpacing(true);
+        dialog.add(content);
         dialog.open();
     }
 
@@ -666,8 +762,20 @@ public abstract class AbstractDietView extends VerticalLayout {
         String date = currentDay.getDate().format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"));
         sb.append("=== Diet log: ").append(date).append(" ===\n\n");
 
-        if (currentDay.getWeightKg() != null)
-            sb.append("Weight: ").append(currentDay.getWeightKg()).append(" kg\n");
+        // Profile
+        boolean hasProfile = currentDay.getGender() != null || currentDay.getAge() != null
+                || currentDay.getHeightCm() != null || currentDay.getWeightKg() != null;
+        if (hasProfile) {
+            sb.append("Profile: ");
+            if ("M".equals(currentDay.getGender())) sb.append("Male  ");
+            else if ("F".equals(currentDay.getGender())) sb.append("Female  ");
+            if (currentDay.getAge() != null) sb.append("Age: ").append(currentDay.getAge()).append("  ");
+            if (currentDay.getHeightCm() != null) sb.append("Height: ").append(currentDay.getHeightCm()).append(" cm  ");
+            if (currentDay.getWeightKg() != null) sb.append("Weight: ").append(currentDay.getWeightKg()).append(" kg");
+            sb.append("\n");
+        }
+        if (currentDay.getActivityLevel() != null)
+            sb.append("Activity: ").append(ACTIVITY_LEVELS.getOrDefault(currentDay.getActivityLevel(), currentDay.getActivityLevel())).append("\n");
 
         int tKcal = currentDay.getTargetKcal() != null ? currentDay.getTargetKcal() : 0;
         int tProtein = currentDay.getTargetProtein() != null ? currentDay.getTargetProtein() : 0;

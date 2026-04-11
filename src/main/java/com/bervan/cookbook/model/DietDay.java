@@ -25,6 +25,10 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
     private Integer targetFiber;
     private Integer activityKcal;
     private Double weightKg;
+    private Integer age;
+    private String gender; // "M" or "F"
+    private Integer heightCm;
+    private String activityLevel; // SEDENTARY, LIGHT, MODERATE, ACTIVE, VERY_ACTIVE
 
     @Column(length = 1000)
     private String notes;
@@ -83,6 +87,18 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+
+    public Integer getHeightCm() { return heightCm; }
+    public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }
+
+    public String getActivityLevel() { return activityLevel; }
+    public void setActivityLevel(String activityLevel) { this.activityLevel = activityLevel; }
 
     public List<DietMeal> getMeals() { return meals; }
     public void setMeals(List<DietMeal> meals) { this.meals = meals; }
