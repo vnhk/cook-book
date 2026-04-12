@@ -1,5 +1,6 @@
 package com.bervan.cookbook.view;
 
+import com.bervan.common.component.BervanComboBox;
 import com.bervan.common.view.AbstractPageView;
 import com.bervan.cookbook.model.DietDay;
 import com.bervan.cookbook.model.DietMeal;
@@ -624,7 +625,7 @@ public abstract class AbstractDietView extends AbstractPageView {
         activityField.setValue(currentDay.getActivityKcal() != null ? currentDay.getActivityKcal().doubleValue() : 0.0);
         activityField.setWidthFull();
 
-        Select<Integer> activityPercentSelect = new Select<>();
+        BervanComboBox<Integer> activityPercentSelect = new BervanComboBox<>();
         activityPercentSelect.setLabel("Accuracy");
         activityPercentSelect.setItems(40, 50, 60, 70, 80, 90, 100);
         activityPercentSelect.setItemLabelGenerator(p -> p + "%");
@@ -671,7 +672,7 @@ public abstract class AbstractDietView extends AbstractPageView {
         genderGroup.setItemLabelGenerator(g -> "M".equals(g) ? "♂ Male" : "♀ Female");
         if (currentDay.getGender() != null) genderGroup.setValue(currentDay.getGender());
 
-        Select<String> activityLevelSelect = new Select<>();
+        BervanComboBox<String> activityLevelSelect = new BervanComboBox<>();
         activityLevelSelect.setLabel("Activity level");
         activityLevelSelect.setItems(ACTIVITY_LEVELS.keySet().stream().toList());
         activityLevelSelect.setItemLabelGenerator(k -> ACTIVITY_LEVELS.getOrDefault(k, k));
