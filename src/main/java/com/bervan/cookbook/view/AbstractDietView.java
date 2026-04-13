@@ -410,6 +410,12 @@ public abstract class AbstractDietView extends AbstractPageView {
 
     private Div buildQuickEntryForm(Dialog dialog, DietMeal.MealType mealType) {
         Div div = new Div();
+
+        RadioButtonGroup<String> modeGroup = new RadioButtonGroup<>();
+        modeGroup.setItems("Direct", "Per 100g");
+        modeGroup.setValue("Direct");
+        modeGroup.getStyle().set("margin-bottom", "8px");
+
         FormLayout form = new FormLayout();
 
         TextField descField = new TextField("Description");
@@ -419,8 +425,52 @@ public abstract class AbstractDietView extends AbstractPageView {
         NumberField fatField = new NumberField("Fat (g)");
         NumberField carbsField = new NumberField("Carbs (g)");
         NumberField fiberField = new NumberField("Fiber (g)");
+        NumberField weightField = new NumberField("Weight (g)");
+        weightField.setMin(0.1);
+        weightField.setVisible(false);
 
-        form.add(descField, kcalField, proteinField, fatField, carbsField, fiberField);
+        Div macroPreviewQuick = new Div();
+        macroPreviewQuick.getStyle()
+                .set("font-size", "var(--bervan-font-size-sm)")
+                .set("color", "var(--bervan-text-secondary)")
+                .set("margin-top", "4px")
+                .set("display", "none");
+
+        Runnable updatePreview = () -> {
+            if ("Per 100g".equals(modeGroup.getValue()) && weightField.getValue() != null) {
+                double w = weightField.getValue();
+                double kcalVal = kcalField.getValue() != null ? kcalField.getValue() * w / 100.0 : 0;
+                double pVal = proteinField.getValue() != null ? proteinField.getValue() * w / 100.0 : 0;
+                double fVal = fatField.getValue() != null ? fatField.getValue() * w / 100.0 : 0;
+                double cVal = carbsField.getValue() != null ? carbsField.getValue() * w / 100.0 : 0;
+                double fiVal = fiberField.getValue() != null ? fiberField.getValue() * w / 100.0 : 0;
+                macroPreviewQuick.setText(String.format("→ %.1f kcal  |  %.1fg P  |  %.1fg F  |  %.1fg C  |  %.1fg Fi",
+                        kcalVal, pVal, fVal, cVal, fiVal));
+                macroPreviewQuick.getStyle().set("display", "block");
+            } else {
+                macroPreviewQuick.getStyle().set("display", "none");
+            }
+        };
+
+        modeGroup.addValueChangeListener(e -> {
+            boolean isPer100g = "Per 100g".equals(e.getValue());
+            weightField.setVisible(isPer100g);
+            kcalField.setLabel(isPer100g ? "Calories per 100g" : "Calories (kcal)");
+            proteinField.setLabel(isPer100g ? "Protein per 100g" : "Protein (g)");
+            fatField.setLabel(isPer100g ? "Fat per 100g" : "Fat (g)");
+            carbsField.setLabel(isPer100g ? "Carbs per 100g" : "Carbs (g)");
+            fiberField.setLabel(isPer100g ? "Fiber per 100g" : "Fiber (g)");
+            updatePreview.run();
+        });
+
+        weightField.addValueChangeListener(e -> updatePreview.run());
+        kcalField.addValueChangeListener(e -> updatePreview.run());
+        proteinField.addValueChangeListener(e -> updatePreview.run());
+        fatField.addValueChangeListener(e -> updatePreview.run());
+        carbsField.addValueChangeListener(e -> updatePreview.run());
+        fiberField.addValueChangeListener(e -> updatePreview.run());
+
+        form.add(descField, kcalField, proteinField, fatField, carbsField, fiberField, weightField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
 
         Button save = new Button("Add", e -> {
@@ -428,13 +478,27 @@ public abstract class AbstractDietView extends AbstractPageView {
                 showErrorNotification("Enter at least calories or protein.");
                 return;
             }
+            boolean isPer100g = "Per 100g".equals(modeGroup.getValue());
+            if (isPer100g && weightField.getValue() == null) {
+                showErrorNotification("Enter weight in grams.");
+                return;
+            }
             DietMealItem item = new DietMealItem();
             item.setDescription(descField.getValue());
-            item.setKcal(kcalField.getValue());
-            item.setProtein(proteinField.getValue());
-            item.setFat(fatField.getValue());
-            item.setCarbs(carbsField.getValue());
-            item.setFiber(fiberField.getValue());
+            if (isPer100g) {
+                double w = weightField.getValue();
+                item.setKcal(kcalField.getValue() != null ? kcalField.getValue() * w / 100.0 : null);
+                item.setProtein(proteinField.getValue() != null ? proteinField.getValue() * w / 100.0 : null);
+                item.setFat(fatField.getValue() != null ? fatField.getValue() * w / 100.0 : null);
+                item.setCarbs(carbsField.getValue() != null ? carbsField.getValue() * w / 100.0 : null);
+                item.setFiber(fiberField.getValue() != null ? fiberField.getValue() * w / 100.0 : null);
+            } else {
+                item.setKcal(kcalField.getValue());
+                item.setProtein(proteinField.getValue());
+                item.setFat(fatField.getValue());
+                item.setCarbs(carbsField.getValue());
+                item.setFiber(fiberField.getValue());
+            }
 
             DietMeal meal = dietService.getOrCreateMeal(currentDay, mealType);
             currentDay = dietService.getOrCreateDay(selectedDate);
@@ -451,7 +515,7 @@ public abstract class AbstractDietView extends AbstractPageView {
         Button cancel = new Button("Cancel", e -> dialog.close());
 
         HorizontalLayout buttons = new HorizontalLayout(save, cancel);
-        div.add(form, buttons);
+        div.add(modeGroup, form, macroPreviewQuick, buttons);
         return div;
     }
 
