@@ -88,7 +88,7 @@ public abstract class AbstractDietDashboardView extends AbstractPageView {
                 .set("opacity", "0.7")
                 .set("padding", "0.25rem 0");
 
-        Span text = new Span("Net Deficit = Effective TDEE − Consumed  |  Effective TDEE = Base TDEE + (Activity kcal × Activity %)  |  Green bars = deficit (weight loss), red = surplus");
+        Span text = new Span("Net Deficit = TDEE − Consumed  |  Green bars = deficit (weight loss), red = surplus");
         info.add(text);
         return info;
     }
@@ -112,7 +112,7 @@ public abstract class AbstractDietDashboardView extends AbstractPageView {
         chartsContainer.add(chartCard("Net Deficit (green = deficit, red = surplus)",
                 new DietDeficitChart(data.labels(), data.deficit())));
 
-        chartsContainer.add(chartCard("Calorie Intake vs Target vs Effective TDEE",
+        chartsContainer.add(chartCard("Calorie Intake vs Target vs TDEE",
                 new DietCalorieChart(data.labels(), data.consumedKcal(),
                         data.targetKcal(), data.effectiveTdee())));
 

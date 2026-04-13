@@ -59,7 +59,7 @@ window.renderDietCalorieChart = (canvas, labels, consumed, target, effectiveTdee
                     tension: 0.3
                 },
                 {
-                    label: 'Effective TDEE (kcal)',
+                    label: 'TDEE / Maintenance (kcal)',
                     data: effectiveTdee.map(v => v === 'null' ? null : parseFloat(v)),
                     borderColor: '#10b981',
                     backgroundColor: 'transparent',
