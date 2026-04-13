@@ -8,6 +8,7 @@ import com.bervan.cookbook.repository.DietMealItemRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -143,6 +144,10 @@ public class DietService extends BaseService<UUID, DietDay> {
 
     public Optional<DietDay> findByDate(LocalDate date) {
         return dietDayRepository.findByDateAndDeletedFalse(date);
+    }
+
+    public List<DietDay> getRange(LocalDate from, LocalDate to) {
+        return dietDayRepository.findByDateBetweenAndDeletedFalseOrderByDate(from, to);
     }
 
     public double totalKcal(DietDay day) {

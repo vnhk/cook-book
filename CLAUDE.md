@@ -97,6 +97,20 @@ Digital recipe management system. Store/organize recipes, manage ingredients wit
 - `src/main/resources/autoconfig/Recipe.yml` — all recipe fields; tags use `VaadinDynamicMultiDropdownBervanColumn`
 - `src/main/resources/autoconfig/Ingredient.yml` — name + category (with predefined values)
 
+## Diet Dashboard
+
+Route: `/cook-book/diet-dashboard`
+- `AbstractDietDashboardView` + `DietDashboardView` (concrete in my-tools-vaadin-app)
+- `DietDashboardService` — aggregates DietDay data by DAY/WEEK/MONTH grouping
+- Charts (Chart.js via `@JsModule("./diet-chart-component.js")`):
+  - **Activity Calories Burned** — `DietActivityChart` (bar)
+  - **Net Deficit** — `DietDeficitChart` (bar, green=deficit/red=surplus)
+  - **Calorie Intake vs Target vs Effective TDEE** — `DietCalorieChart` (line × 3)
+  - **Weight** — `DietWeightChart` (line, only shown when weight data exists)
+- Formula: `Net Deficit = Effective TDEE − Consumed`; `Effective TDEE = estimatedDailyKcal + (activityKcal × activityKcalPercent / 100)`
+- JS: `cook-book/src/main/resources/META-INF/resources/frontend/diet-chart-component.js`
+- Nav button "Dashboard" added to `CookBookPageLayout`
+
 ## Important Notes
 1. Polish localization: units in Polish, diacritical stripping (ą→a, ł→l, etc.)
 2. Smart shopping cart: aggregates duplicate ingredients and converts units

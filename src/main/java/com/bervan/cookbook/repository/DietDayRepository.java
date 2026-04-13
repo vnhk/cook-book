@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface DietDayRepository extends BaseRepository<DietDay, UUID> {
     Optional<DietDay> findByDateAndDeletedFalse(LocalDate date);
     List<DietDay> findByDeletedFalseOrderByDateDesc();
+    List<DietDay> findByDateBetweenAndDeletedFalseOrderByDate(LocalDate from, LocalDate to);
 }
