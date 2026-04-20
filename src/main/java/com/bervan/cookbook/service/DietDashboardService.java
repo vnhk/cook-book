@@ -51,7 +51,7 @@ public class DietDashboardService {
                     }
                     double consumed = dietService.totalKcal(day);
                     double tdee = day.getEstimatedDailyKcal() != null ? day.getEstimatedDailyKcal() : 0;
-                    double target = day.getTargetKcal() != null ? day.getTargetKcal() : 0;
+                    double target = (day.getTargetKcal() != null ? day.getTargetKcal() : 0) + activityBurned;
                     double deficit = tdee - consumed;
                     return new RawDay(day.getDate(), activityBurned, consumed, target, tdee, deficit, day.getWeightKg());
                 })
