@@ -111,6 +111,58 @@ window.renderDietDeficitChart = (canvas, labels, deficit) => {
     });
 };
 
+window.renderDietWeightProjectionChart = (canvas, labels, actualWeight, projectedWeight) => {
+    if (!canvas) return;
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text-color').trim();
+    const line1Color = getComputedStyle(document.documentElement).getPropertyValue('--chart-line1-color').trim() || '#6366f1';
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Actual Weight (kg)',
+                    data: actualWeight.map(v => v === 'null' ? null : parseFloat(v)),
+                    borderColor: line1Color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    tension: 0.3,
+                    spanGaps: false
+                },
+                {
+                    label: 'Projected Weight (kg)',
+                    data: projectedWeight.map(v => v === 'null' ? null : parseFloat(v)),
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249,115,22,0.08)',
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 3,
+                    tension: 0.3,
+                    spanGaps: false,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: textColor } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.parsed.y !== null ? `${ctx.dataset.label}: ${ctx.parsed.y} kg` : null
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: textColor, maxTicksLimit: 14 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { beginAtZero: false, ticks: { color: textColor, callback: v => v + ' kg' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+};
+
 window.renderDietWeightChart = (canvas, labels, weight) => {
     if (!canvas) return;
     const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text-color').trim();

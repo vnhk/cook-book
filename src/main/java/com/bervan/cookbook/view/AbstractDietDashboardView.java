@@ -8,6 +8,7 @@ import com.bervan.cookbook.view.chart.DietActivityChart;
 import com.bervan.cookbook.view.chart.DietCalorieChart;
 import com.bervan.cookbook.view.chart.DietDeficitChart;
 import com.bervan.cookbook.view.chart.DietWeightChart;
+import com.bervan.cookbook.view.chart.DietWeightProjectionChart;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -99,27 +100,37 @@ public abstract class AbstractDietDashboardView extends AbstractPageView {
         DietChartData data = dashboardService.getChartData(from, to, groupBy);
         chartsContainer.removeAll();
 
-        if (data.labels().isEmpty()) {
+        if (!data.labels().isEmpty()) {
+            chartsContainer.add(chartCard("Activity Calories Burned",
+                    new DietActivityChart(data.labels(), data.activityKcal())));
+
+            chartsContainer.add(chartCard("Net Deficit (green = deficit, red = surplus)",
+                    new DietDeficitChart(data.labels(), data.deficit())));
+
+            chartsContainer.add(chartCard("Calorie Intake vs Target vs TDEE",
+                    new DietCalorieChart(data.labels(), data.consumedKcal(),
+                            data.targetKcal(), data.effectiveTdee())));
+
+            boolean hasWeight = data.weight().stream().anyMatch(w -> w != null);
+            if (hasWeight) {
+                chartsContainer.add(chartCard("Weight (kg)",
+                        new DietWeightChart(data.labels(), data.weight())));
+            }
+        } else {
             Div empty = new Div(new Span("No data for selected range."));
             empty.getStyle().set("grid-column", "1 / -1").set("text-align", "center").set("padding", "2rem");
             chartsContainer.add(empty);
-            return;
         }
 
-        chartsContainer.add(chartCard("Activity Calories Burned",
-                new DietActivityChart(data.labels(), data.activityKcal())));
-
-        chartsContainer.add(chartCard("Net Deficit (green = deficit, red = surplus)",
-                new DietDeficitChart(data.labels(), data.deficit())));
-
-        chartsContainer.add(chartCard("Calorie Intake vs Target vs TDEE",
-                new DietCalorieChart(data.labels(), data.consumedKcal(),
-                        data.targetKcal(), data.effectiveTdee())));
-
-        boolean hasWeight = data.weight().stream().anyMatch(w -> w != null);
-        if (hasWeight) {
-            chartsContainer.add(chartCard("Weight (kg)",
-                    new DietWeightChart(data.labels(), data.weight())));
+        DietDashboardService.WeightProjectionData proj = dashboardService.getWeightProjectionData();
+        boolean hasProjection = proj.projectedWeight().stream().anyMatch(w -> w != null);
+        if (hasProjection) {
+            String subtitle = String.format("avg deficit %.0f kcal/day → %s%.2f kg/week",
+                    proj.avgDailyDeficit(),
+                    proj.weeklyWeightChange() >= 0 ? "-" : "+",
+                    Math.abs(proj.weeklyWeightChange()));
+            chartsContainer.add(chartCard("Weight Projection — 13 weeks  (" + subtitle + ")",
+                    new DietWeightProjectionChart(proj.labels(), proj.actualWeight(), proj.projectedWeight())));
         }
     }
 
