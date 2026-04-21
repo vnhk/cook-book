@@ -6,9 +6,14 @@ import com.bervan.cookbook.service.DietDashboardService.DietChartData;
 import com.bervan.cookbook.service.DietDashboardService.GroupBy;
 import com.bervan.cookbook.view.chart.DietActivityChart;
 import com.bervan.cookbook.view.chart.DietCalorieChart;
+import com.bervan.cookbook.view.chart.DietCumulativeDeficitChart;
 import com.bervan.cookbook.view.chart.DietDeficitChart;
+import com.bervan.cookbook.view.chart.DietMacroBreakdownChart;
 import com.bervan.cookbook.view.chart.DietWeightChart;
 import com.bervan.cookbook.view.chart.DietWeightProjectionChart;
+
+import java.util.ArrayList;
+import java.util.List;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -110,6 +115,25 @@ public abstract class AbstractDietDashboardView extends AbstractPageView {
             chartsContainer.add(chartCard("Calorie Intake vs Target vs TDEE",
                     new DietCalorieChart(data.labels(), data.consumedKcal(),
                             data.targetKcal(), data.effectiveTdee())));
+
+            // Cumulative deficit
+            List<Double> cumulative = new ArrayList<>();
+            double running = 0;
+            for (Double d : data.deficit()) {
+                running += d != null ? d : 0;
+                cumulative.add(Math.round(running * 10.0) / 10.0);
+            }
+            chartsContainer.add(chartCard("Cumulative Deficit (tooltip: ≈ kg fat burned)",
+                    new DietCumulativeDeficitChart(data.labels(), cumulative)));
+
+            // Macro breakdown
+            DietDashboardService.MacroBreakdownData macro = dashboardService.getMacroBreakdown(from, to);
+            if (macro.hasData()) {
+                List<Double> consumed = List.of(macro.avgConsumedProtein(), macro.avgConsumedFat(), macro.avgConsumedCarbs());
+                List<Double> targets  = List.of(macro.avgTargetProtein(),  macro.avgTargetFat(),  macro.avgTargetCarbs());
+                chartsContainer.add(chartCard("Macro Breakdown — avg/day (Protein / Fat / Carbs)",
+                        new DietMacroBreakdownChart(consumed, targets)));
+            }
 
             boolean hasWeight = data.weight().stream().anyMatch(w -> w != null);
             if (hasWeight) {

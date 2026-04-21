@@ -715,6 +715,59 @@ public abstract class AbstractDietView extends AbstractPageView {
         FormLayout targetsForm = new FormLayout(kcalField, estDailyField, proteinField, carbsField, fatField, fiberField);
         targetsForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("300px", 2));
 
+        // --- Macro % split calculator ---
+        NumberField proteinPctField = new NumberField("Protein %");
+        proteinPctField.setMin(0); proteinPctField.setMax(100); proteinPctField.setStep(1);
+        NumberField fatPctField = new NumberField("Fat %");
+        fatPctField.setMin(0); fatPctField.setMax(100); fatPctField.setStep(1);
+        NumberField carbsPctField = new NumberField("Carbs %");
+        carbsPctField.setMin(0); carbsPctField.setMax(100); carbsPctField.setStep(1);
+
+        Span pctSumSpan = new Span("Sum: 0%");
+        pctSumSpan.getStyle()
+                .set("font-size", "var(--bervan-font-size-sm)")
+                .set("color", "var(--bervan-text-secondary)")
+                .set("align-self", "flex-end")
+                .set("padding-bottom", "8px");
+
+        Runnable updatePctSum = () -> {
+            double sum = (proteinPctField.getValue() != null ? proteinPctField.getValue() : 0)
+                    + (fatPctField.getValue() != null ? fatPctField.getValue() : 0)
+                    + (carbsPctField.getValue() != null ? carbsPctField.getValue() : 0);
+            pctSumSpan.setText(String.format("Sum: %.0f%%", sum));
+            pctSumSpan.getStyle().set("color", Math.abs(sum - 100) < 1
+                    ? "rgb(var(--bervan-success-rgb, 16,185,129))"
+                    : "rgb(var(--bervan-danger-rgb, 239,68,68))");
+        };
+        proteinPctField.addValueChangeListener(e -> updatePctSum.run());
+        fatPctField.addValueChangeListener(e -> updatePctSum.run());
+        carbsPctField.addValueChangeListener(e -> updatePctSum.run());
+
+        Button calcMacrosBtn = new Button("Calculate macros from %", VaadinIcon.CALC.create(), e -> {
+            double targetKcal = kcalField.getValue() != null ? kcalField.getValue() : 0;
+            double actKcal = activityField.getValue() != null ? activityField.getValue() : 0;
+            int actPct = activityPercentSelect.getValue() != null ? activityPercentSelect.getValue() : 100;
+            double effectiveKcal = targetKcal + actKcal * actPct / 100.0;
+            if (effectiveKcal <= 0) { showErrorNotification("Enter Target Calories first."); return; }
+            Double pp = proteinPctField.getValue();
+            Double fp = fatPctField.getValue();
+            Double cp = carbsPctField.getValue();
+            if (pp == null && fp == null && cp == null) { showErrorNotification("Enter at least one % value."); return; }
+            if (pp != null) proteinField.setValue(Math.round(effectiveKcal * pp / 100.0 / 4.0 * 10.0) / 10.0);
+            if (fp != null) fatField.setValue(Math.round(effectiveKcal * fp / 100.0 / 9.0 * 10.0) / 10.0);
+            if (cp != null) carbsField.setValue(Math.round(effectiveKcal * cp / 100.0 / 4.0 * 10.0) / 10.0);
+            showSuccessNotification(String.format("Macros calculated from %.0f effective kcal", effectiveKcal));
+        });
+        calcMacrosBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST, ButtonVariant.LUMO_SMALL);
+        calcMacrosBtn.setWidthFull();
+
+        HorizontalLayout pctRow = new HorizontalLayout(proteinPctField, fatPctField, carbsPctField, pctSumSpan);
+        pctRow.setWidthFull();
+        pctRow.setAlignItems(Alignment.END);
+        pctRow.setFlexGrow(1, proteinPctField);
+        pctRow.setFlexGrow(1, fatPctField);
+        pctRow.setFlexGrow(1, carbsPctField);
+
         // --- Profile ---
         NumberField weightField = new NumberField("Weight (kg)");
         weightField.setValue(currentDay.getWeightKg());
@@ -810,7 +863,8 @@ public abstract class AbstractDietView extends AbstractPageView {
         Button cancel = new Button("Cancel", e -> dialog.close());
 
         VerticalLayout content = new VerticalLayout(
-                targetsForm, activityRow, profileForm, activityLevelSelect, calcBtn, notesField,
+                targetsForm, activityRow, pctRow, calcMacrosBtn,
+                profileForm, activityLevelSelect, calcBtn, notesField,
                 new HorizontalLayout(save, cancel));
         content.setPadding(false);
         content.setSpacing(true);

@@ -111,6 +111,116 @@ window.renderDietDeficitChart = (canvas, labels, deficit) => {
     });
 };
 
+window.renderDietMacroBreakdownChart = (canvas, consumed, targets) => {
+    if (!canvas) return;
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text-color').trim();
+    const line1Color = getComputedStyle(document.documentElement).getPropertyValue('--chart-line1-color').trim() || '#6366f1';
+    const line2Color = getComputedStyle(document.documentElement).getPropertyValue('--chart-line2-color').trim() || '#f97316';
+    const ctx = canvas.getContext('2d');
+    const c = consumed.map(v => v === 'null' ? 0 : parseFloat(v));
+    const t = targets.map(v => v === 'null' ? 0 : parseFloat(v));
+    const kcalFactor = [4, 9, 4]; // protein, fat, carbs
+    const labels = ['Protein (g)', 'Fat (g)', 'Carbs (g)'];
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Consumed (avg/day)',
+                    data: c,
+                    backgroundColor: [
+                        line1Color + 'cc',
+                        line1Color + 'cc',
+                        line1Color + 'cc'
+                    ],
+                    borderColor: line1Color,
+                    borderWidth: 1
+                },
+                {
+                    label: 'Target (avg/day)',
+                    data: t,
+                    backgroundColor: [
+                        line2Color + '66',
+                        line2Color + '66',
+                        line2Color + '66'
+                    ],
+                    borderColor: line2Color,
+                    borderWidth: 1,
+                    borderDash: [4, 2]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: textColor } },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: (ctx) => {
+                            const g = ctx.parsed.y;
+                            const kcal = Math.round(g * kcalFactor[ctx.dataIndex]);
+                            return `≈ ${kcal} kcal`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: textColor, callback: v => v + 'g' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+};
+
+window.renderDietCumulativeDeficitChart = (canvas, labels, cumulative) => {
+    if (!canvas) return;
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text-color').trim();
+    const ctx = canvas.getContext('2d');
+    const data = cumulative.map(v => v === 'null' ? null : parseFloat(v));
+    // Gradient fill: green above 0, red below
+    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+    gradient.addColorStop(0, 'rgba(16,185,129,0.25)');
+    gradient.addColorStop(1, 'rgba(16,185,129,0.02)');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cumulative Deficit (kcal)',
+                data: data,
+                borderColor: '#10b981',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointRadius: 2,
+                tension: 0.3,
+                fill: true,
+                spanGaps: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: textColor } },
+                tooltip: { callbacks: { label: ctx => `${ctx.parsed.y?.toFixed(0)} kcal  ≈ ${(ctx.parsed.y / 7700).toFixed(2)} kg fat` } }
+            },
+            scales: {
+                x: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: {
+                    ticks: {
+                        color: textColor,
+                        callback: v => v >= 1000 || v <= -1000 ? (v / 1000).toFixed(1) + 'k kcal' : v + ' kcal'
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+};
+
 window.renderDietWeightProjectionChart = (canvas, labels, actualWeight, projectedWeight) => {
     if (!canvas) return;
     const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text-color').trim();

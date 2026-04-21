@@ -106,6 +106,50 @@ public class DietDashboardService {
         return Math.round(group.stream().mapToDouble(extractor).average().orElse(0) * 10.0) / 10.0;
     }
 
+    private double round1(double v) {
+        return Math.round(v * 10.0) / 10.0;
+    }
+
+    // ---- Macro Breakdown ----
+
+    public record MacroBreakdownData(
+            double avgConsumedProtein,
+            double avgConsumedFat,
+            double avgConsumedCarbs,
+            double avgTargetProtein,
+            double avgTargetFat,
+            double avgTargetCarbs
+    ) {
+        public boolean hasData() {
+            return avgConsumedProtein > 0 || avgConsumedFat > 0 || avgConsumedCarbs > 0;
+        }
+    }
+
+    public MacroBreakdownData getMacroBreakdown(LocalDate from, LocalDate to) {
+        List<DietDay> days = dietService.getRange(from, to);
+
+        List<DietDay> daysWithFood = days.stream()
+                .filter(d -> dietService.totalKcal(d) > 0)
+                .toList();
+        if (daysWithFood.isEmpty()) return new MacroBreakdownData(0, 0, 0, 0, 0, 0);
+
+        double avgP = round1(daysWithFood.stream().mapToDouble(dietService::totalProtein).average().orElse(0));
+        double avgF = round1(daysWithFood.stream().mapToDouble(dietService::totalFat).average().orElse(0));
+        double avgC = round1(daysWithFood.stream().mapToDouble(dietService::totalCarbs).average().orElse(0));
+
+        List<DietDay> daysWithTargets = days.stream()
+                .filter(d -> d.getTargetProtein() != null && d.getTargetProtein() > 0)
+                .toList();
+        double avgTP = daysWithTargets.isEmpty() ? 0 : round1(daysWithTargets.stream()
+                .mapToDouble(d -> d.getTargetProtein()).average().orElse(0));
+        double avgTF = daysWithTargets.isEmpty() ? 0 : round1(daysWithTargets.stream()
+                .mapToDouble(d -> d.getTargetFat() != null ? d.getTargetFat() : 0).average().orElse(0));
+        double avgTC = daysWithTargets.isEmpty() ? 0 : round1(daysWithTargets.stream()
+                .mapToDouble(d -> d.getTargetCarbs() != null ? d.getTargetCarbs() : 0).average().orElse(0));
+
+        return new MacroBreakdownData(avgP, avgF, avgC, avgTP, avgTF, avgTC);
+    }
+
     // ---- Weight Projection ----
 
     public record WeightProjectionData(
