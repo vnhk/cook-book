@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 @CssImport("./bervan-cookbook.css")
+@Deprecated
 public abstract class AbstractDietView extends AbstractPageView {
 
     public static final String ROUTE_NAME = "/cook-book/diet";

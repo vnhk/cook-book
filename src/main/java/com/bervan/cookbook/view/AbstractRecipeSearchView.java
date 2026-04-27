@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @CssImport("./bervan-cookbook.css")
+@Deprecated
 public abstract class AbstractRecipeSearchView extends AbstractPageView {
     public static final String ROUTE_NAME = "/cook-book/search";
 

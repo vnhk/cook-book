@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CssImport("./bervan-cookbook.css")
+@Deprecated
 public abstract class AbstractRecipeDetailView extends AbstractPageView implements HasUrlParameter<String> {
     public static final String ROUTE_NAME = "/cook-book/recipe-details/";
 

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.UUID;
 
 @CssImport("./bervan-cookbook.css")
+@Deprecated
 public abstract class AbstractRecipeListView extends AbstractBervanTableView<UUID, Recipe> {
     public static final String ROUTE_NAME = "/cook-book/recipes";
 

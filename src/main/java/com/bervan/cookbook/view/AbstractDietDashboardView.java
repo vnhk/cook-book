@@ -26,6 +26,7 @@ import com.vaadin.flow.component.shared.Tooltip;
 
 import java.time.LocalDate;
 
+@Deprecated
 public abstract class AbstractDietDashboardView extends AbstractPageView {
 
     public static final String ROUTE_NAME = "/cook-book/diet-dashboard";

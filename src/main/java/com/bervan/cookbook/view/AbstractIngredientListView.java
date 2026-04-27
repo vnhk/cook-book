@@ -11,6 +11,7 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 import java.util.UUID;
 
 @CssImport("./bervan-cookbook.css")
+@Deprecated
 public abstract class AbstractIngredientListView extends AbstractBervanTableView<UUID, Ingredient> {
     public static final String ROUTE_NAME = "/cook-book/ingredients";
 
