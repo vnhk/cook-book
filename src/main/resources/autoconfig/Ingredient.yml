@@ -12,7 +12,7 @@ columns:
   - field: category
     displayName: "Category"
     internalNameField: "Ingredient_category_columnName"
-    strValues: [ "Nabiał", "Mięso", "Ryby", "Warzywa", "Owoce", "Przyprawy", "Zboża", "Pieczywo", "Tłuszcze", "Napoje", "Słodycze", "Słone Przekąski" "Inne" ]
+    strValues: [ "Nabiał", "Mięso", "Ryby", "Warzywa", "Owoce", "Przyprawy", "Zboża", "Pieczywo", "Tłuszcze", "Napoje", "Słodycze", "Słone Przekąski", "Suplementy", "Inne" ]
     defaultValue: "Inne"
     inSaveForm: true
     inEditForm: true
