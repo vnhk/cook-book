@@ -79,7 +79,6 @@ columns:
     inSaveForm: true
     inEditForm: true
     inTable: false
-    extension: "VaadinDynamicMultiDropdownBervanColumn"
 
   - field: requiredEquipment
     displayName: "Equipment"

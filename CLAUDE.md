@@ -94,13 +94,12 @@ Digital recipe management system. Store/organize recipes, manage ingredients wit
 - `RecipeComponentHelper` — recipe-specific UI components
 
 ## Configuration
-- `src/main/resources/autoconfig/Recipe.yml` — all recipe fields; tags use `VaadinDynamicMultiDropdownBervanColumn`
 - `src/main/resources/autoconfig/Ingredient.yml` — name + category (with predefined values)
 
 ## Diet Dashboard
 
 Route: `/cook-book/diet-dashboard`
-- `AbstractDietDashboardView` + `DietDashboardView` (concrete in my-tools-vaadin-app)
+- `AbstractDietDashboardView` + `DietDashboardView` (concrete in my-tools-app)
 - `DietDashboardService` — aggregates DietDay data by DAY/WEEK/MONTH grouping
 - Charts (Chart.js via `@JsModule("./diet-chart-component.js")`):
   - **Activity Calories Burned** — `DietActivityChart` (bar)
