@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @JsModule("./diet-chart-component.js")
 @Tag("canvas")
+@Deprecated
 public class DietMacroBreakdownChart extends Component implements HasSize {
 
     public DietMacroBreakdownChart(List<Double> consumed, List<Double> targets) {

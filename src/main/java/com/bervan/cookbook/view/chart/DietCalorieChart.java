@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @JsModule("./diet-chart-component.js")
 @Tag("canvas")
+@Deprecated
 public class DietCalorieChart extends Component implements HasSize {
 
     public DietCalorieChart(List<String> labels, List<Double> consumed,

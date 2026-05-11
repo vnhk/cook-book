@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @JsModule("./diet-chart-component.js")
 @Tag("canvas")
+@Deprecated
 public class DietWeightProjectionChart extends Component implements HasSize {
 
     public DietWeightProjectionChart(List<String> labels, List<Double> actualWeight, List<Double> projectedWeight) {

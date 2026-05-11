@@ -3,6 +3,7 @@ package com.bervan.cookbook.view;
 import com.bervan.common.MenuNavigationComponent;
 import com.vaadin.flow.component.icon.VaadinIcon;
 
+@Deprecated
 public class CookBookPageLayout extends MenuNavigationComponent {
     public CookBookPageLayout(String route, String... notVisibleButtons) {
         super(route, notVisibleButtons);
