@@ -23,61 +23,31 @@ public class DietRestController {
     private final IngredientService ingredientService;
 
     public DietRestController(DietService dietService, DietDashboardService dashboardService,
-                               IngredientService ingredientService) {
+                              IngredientService ingredientService) {
         this.dietService = dietService;
         this.dashboardService = dashboardService;
         this.ingredientService = ingredientService;
     }
 
-    // ─── DTOs ────────────────────────────────────────────────────────────────
-
-    record DietMealItemDto(UUID id, String displayName, String description,
-                           UUID ingredientId, String ingredientName, Double amountGrams,
-                           double kcal, double protein, double fat, double carbs, double fiber,
-                           boolean quickEntry) {}
-
-    record DietMealDto(UUID id, String mealType, String mealTypeName,
-                       List<DietMealItemDto> items,
-                       double totalKcal, double totalProtein, double totalFat,
-                       double totalCarbs, double totalFiber) {}
-
-    record DietDayDto(String date,
-                      Integer targetKcal, Integer estimatedDailyKcal,
-                      Integer targetProtein, Integer targetCarbs, Integer targetFat, Integer targetFiber,
-                      Integer activityKcal, Integer activityKcalPercent,
-                      Double weightKg, String notes,
-                      Integer age, String gender, Integer heightCm, String activityLevel,
-                      double totalKcal, double totalProtein, double totalFat,
-                      double totalCarbs, double totalFiber,
-                      List<DietMealDto> meals) {}
-
-    record DietChartDataDto(List<String> labels, List<Double> activityKcal, List<Double> consumedKcal,
-                             List<Double> targetKcal, List<Double> effectiveTdee,
-                             List<Double> deficit, List<Double> weight) {}
-
-    record MacroBreakdownDto(double avgConsumedProtein, double avgConsumedFat, double avgConsumedCarbs,
-                              double avgTargetProtein, double avgTargetFat, double avgTargetCarbs,
-                              boolean hasData) {}
-
-    record WeightProjectionDto(List<String> labels, List<Double> actualWeight, List<Double> projectedWeight,
-                                double avgDailyDeficit, double weeklyWeightChange) {}
-
-    record DashboardDto(DietChartDataDto chartData, MacroBreakdownDto macroBreakdown,
-                        WeightProjectionDto weightProjection) {}
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private DietMealItemDto toItemDto(DietMealItem i) {
         boolean quickEntry = i.getIngredient() == null;
-        return new DietMealItemDto(
-                i.getId(), i.getDisplayName(), i.getDescription(),
-                i.getIngredient() != null ? i.getIngredient().getId() : null,
-                i.getIngredient() != null ? i.getIngredient().getName() : null,
-                i.getAmountGrams(),
-                round1(i.getEffectiveKcal()), round1(i.getEffectiveProtein()),
-                round1(i.getEffectiveFat()), round1(i.getEffectiveCarbs()), round1(i.getEffectiveFiber()),
-                quickEntry
-        );
+        DietMealItemDto dto = new DietMealItemDto();
+        dto.setId(i.getId());
+        dto.setDisplayName(i.getDisplayName());
+        dto.setDescription(i.getDescription());
+        dto.setIngredientId(i.getIngredient() != null ? i.getIngredient().getId() : null);
+        dto.setIngredientName(i.getIngredient() != null ? i.getIngredient().getName() : null);
+        dto.setAmountGrams(i.getAmountGrams());
+        dto.setKcal(round1(i.getEffectiveKcal()));
+        dto.setProtein(round1(i.getEffectiveProtein()));
+        dto.setFat(round1(i.getEffectiveFat()));
+        dto.setCarbs(round1(i.getEffectiveCarbs()));
+        dto.setFiber(round1(i.getEffectiveFiber()));
+        dto.setQuickEntry(quickEntry);
+        return dto;
     }
 
     private DietMealDto toMealDto(DietMeal m) {
@@ -85,13 +55,22 @@ public class DietRestController {
                 .filter(i -> !Boolean.TRUE.equals(i.isDeleted()))
                 .map(this::toItemDto)
                 .collect(Collectors.toList());
-        double tk = items.stream().mapToDouble(DietMealItemDto::kcal).sum();
-        double tp = items.stream().mapToDouble(DietMealItemDto::protein).sum();
-        double tf = items.stream().mapToDouble(DietMealItemDto::fat).sum();
-        double tc = items.stream().mapToDouble(DietMealItemDto::carbs).sum();
-        double tfi = items.stream().mapToDouble(DietMealItemDto::fiber).sum();
-        return new DietMealDto(m.getId(), m.getMealType().name(), m.getMealType().getDisplayName(),
-                items, round1(tk), round1(tp), round1(tf), round1(tc), round1(tfi));
+        double tk = items.stream().mapToDouble(DietMealItemDto::getKcal).sum();
+        double tp = items.stream().mapToDouble(DietMealItemDto::getProtein).sum();
+        double tf = items.stream().mapToDouble(DietMealItemDto::getFat).sum();
+        double tc = items.stream().mapToDouble(DietMealItemDto::getCarbs).sum();
+        double tfi = items.stream().mapToDouble(DietMealItemDto::getFiber).sum();
+        DietMealDto dto = new DietMealDto();
+        dto.setId(m.getId());
+        dto.setMealType(m.getMealType().name());
+        dto.setMealTypeName(m.getMealType().getDisplayName());
+        dto.setItems(items);
+        dto.setTotalKcal(round1(tk));
+        dto.setTotalProtein(round1(tp));
+        dto.setTotalFat(round1(tf));
+        dto.setTotalCarbs(round1(tc));
+        dto.setTotalFiber(round1(tfi));
+        return dto;
     }
 
     private DietDayDto toDayDto(DietDay day) {
@@ -100,18 +79,30 @@ public class DietRestController {
                 .sorted(Comparator.comparing(m -> m.getMealType().ordinal()))
                 .map(this::toMealDto)
                 .collect(Collectors.toList());
-        return new DietDayDto(
-                day.getDate().toString(),
-                day.getTargetKcal(), day.getEstimatedDailyKcal(),
-                day.getTargetProtein(), day.getTargetCarbs(), day.getTargetFat(), day.getTargetFiber(),
-                day.getActivityKcal(), day.getActivityKcalPercent(),
-                day.getWeightKg(), day.getNotes(),
-                day.getAge(), day.getGender(), day.getHeightCm(), day.getActivityLevel(),
-                round1(dietService.totalKcal(day)), round1(dietService.totalProtein(day)),
-                round1(dietService.totalFat(day)), round1(dietService.totalCarbs(day)),
-                round1(dietService.totalFiber(day)),
-                meals
-        );
+        DietDayDto dto = new DietDayDto();
+        dto.setId(day.getId());
+        dto.setDate(day.getDate().toString());
+        dto.setTargetKcal(day.getTargetKcal());
+        dto.setEstimatedDailyKcal(day.getEstimatedDailyKcal());
+        dto.setTargetProtein(day.getTargetProtein());
+        dto.setTargetCarbs(day.getTargetCarbs());
+        dto.setTargetFat(day.getTargetFat());
+        dto.setTargetFiber(day.getTargetFiber());
+        dto.setActivityKcal(day.getActivityKcal());
+        dto.setActivityKcalPercent(day.getActivityKcalPercent());
+        dto.setWeightKg(day.getWeightKg());
+        dto.setNotes(day.getNotes());
+        dto.setAge(day.getAge());
+        dto.setGender(day.getGender());
+        dto.setHeightCm(day.getHeightCm());
+        dto.setActivityLevel(day.getActivityLevel());
+        dto.setTotalKcal(round1(dietService.totalKcal(day)));
+        dto.setTotalProtein(round1(dietService.totalProtein(day)));
+        dto.setTotalFat(round1(dietService.totalFat(day)));
+        dto.setTotalCarbs(round1(dietService.totalCarbs(day)));
+        dto.setTotalFiber(round1(dietService.totalFiber(day)));
+        dto.setMeals(meals);
+        return dto;
     }
 
     private double round1(double v) {
@@ -128,7 +119,7 @@ public class DietRestController {
 
     @PutMapping("/day")
     public ResponseEntity<DietDayDto> updateDay(@RequestParam String date,
-                                                 @RequestBody Map<String, Object> req) {
+                                                @RequestBody Map<String, Object> req) {
         LocalDate d = LocalDate.parse(date);
         DietDay day = dietService.getOrCreateDay(d);
         dietService.updateDayTargets(day,
@@ -154,12 +145,15 @@ public class DietRestController {
 
     @PostMapping("/day/{date}/meals/{mealType}/items")
     public ResponseEntity<DietDayDto> addItem(@PathVariable String date,
-                                               @PathVariable String mealType,
-                                               @RequestBody Map<String, Object> req) {
+                                              @PathVariable String mealType,
+                                              @RequestBody Map<String, Object> req) {
         LocalDate d = LocalDate.parse(date);
         DietMeal.MealType type;
-        try { type = DietMeal.MealType.valueOf(mealType.toUpperCase()); }
-        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().build(); }
+        try {
+            type = DietMeal.MealType.valueOf(mealType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
 
         DietDay day = dietService.getOrCreateDay(d);
         DietMeal meal = dietService.getOrCreateMeal(day, type);
@@ -198,7 +192,7 @@ public class DietRestController {
 
     @DeleteMapping("/day/{date}/items/{itemId}")
     public ResponseEntity<DietDayDto> removeItem(@PathVariable String date,
-                                                  @PathVariable UUID itemId) {
+                                                 @PathVariable UUID itemId) {
         LocalDate d = LocalDate.parse(date);
         DietDay day = dietService.getOrCreateDay(d);
         day.getMeals().stream()
@@ -212,15 +206,17 @@ public class DietRestController {
 
     @PostMapping("/day/{date}/meals/{mealType}/copy")
     public ResponseEntity<DietDayDto> copyMeal(@PathVariable String date,
-                                                @PathVariable String mealType,
-                                                @RequestParam String sourceDate,
-                                                @RequestParam String sourceType) {
+                                               @PathVariable String mealType,
+                                               @RequestParam String sourceDate,
+                                               @RequestParam String sourceType) {
         LocalDate d = LocalDate.parse(date);
         DietMeal.MealType targetMealType, sourceMealType;
         try {
             targetMealType = DietMeal.MealType.valueOf(mealType.toUpperCase());
             sourceMealType = DietMeal.MealType.valueOf(sourceType.toUpperCase());
-        } catch (IllegalArgumentException e) { return ResponseEntity.badRequest().build(); }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
 
         DietDay day = dietService.getOrCreateDay(d);
         dietService.copyMealItems(day, targetMealType, LocalDate.parse(sourceDate), sourceMealType);
@@ -238,22 +234,47 @@ public class DietRestController {
         LocalDate fromDate = from.isBlank() ? LocalDate.now().minusDays(30) : LocalDate.parse(from);
         LocalDate toDate = to.isBlank() ? LocalDate.now() : LocalDate.parse(to);
         DietDashboardService.GroupBy gb;
-        try { gb = DietDashboardService.GroupBy.valueOf(groupBy.toUpperCase()); }
-        catch (IllegalArgumentException e) { gb = DietDashboardService.GroupBy.DAY; }
+        try {
+            gb = DietDashboardService.GroupBy.valueOf(groupBy.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            gb = DietDashboardService.GroupBy.DAY;
+        }
 
         DietDashboardService.DietChartData data = dashboardService.getChartData(fromDate, toDate, gb);
         DietDashboardService.MacroBreakdownData macro = dashboardService.getMacroBreakdown(fromDate, toDate);
         DietDashboardService.WeightProjectionData proj = dashboardService.getWeightProjectionData();
 
-        DietChartDataDto chartDto = new DietChartDataDto(data.labels(), data.activityKcal(),
-                data.consumedKcal(), data.targetKcal(), data.effectiveTdee(), data.deficit(), data.weight());
-        MacroBreakdownDto macroDto = new MacroBreakdownDto(macro.avgConsumedProtein(), macro.avgConsumedFat(),
-                macro.avgConsumedCarbs(), macro.avgTargetProtein(), macro.avgTargetFat(), macro.avgTargetCarbs(),
-                macro.hasData());
-        WeightProjectionDto projDto = new WeightProjectionDto(proj.labels(), proj.actualWeight(),
-                proj.projectedWeight(), proj.avgDailyDeficit(), proj.weeklyWeightChange());
+        DietChartDataDto chartDto = new DietChartDataDto();
+        chartDto.setLabels(data.labels());
+        chartDto.setActivityKcal(data.activityKcal());
+        chartDto.setConsumedKcal(data.consumedKcal());
+        chartDto.setTargetKcal(data.targetKcal());
+        chartDto.setEffectiveTdee(data.effectiveTdee());
+        chartDto.setDeficit(data.deficit());
+        chartDto.setWeight(data.weight());
 
-        return ResponseEntity.ok(new DashboardDto(chartDto, macroDto, projDto));
+        MacroBreakdownDto macroDto = new MacroBreakdownDto();
+        macroDto.setAvgConsumedProtein(macro.avgConsumedProtein());
+        macroDto.setAvgConsumedFat(macro.avgConsumedFat());
+        macroDto.setAvgConsumedCarbs(macro.avgConsumedCarbs());
+        macroDto.setAvgTargetProtein(macro.avgTargetProtein());
+        macroDto.setAvgTargetFat(macro.avgTargetFat());
+        macroDto.setAvgTargetCarbs(macro.avgTargetCarbs());
+        macroDto.setHasData(macro.hasData());
+
+        WeightProjectionDto projDto = new WeightProjectionDto();
+        projDto.setLabels(proj.labels());
+        projDto.setActualWeight(proj.actualWeight());
+        projDto.setProjectedWeight(proj.projectedWeight());
+        projDto.setAvgDailyDeficit(proj.avgDailyDeficit());
+        projDto.setWeeklyWeightChange(proj.weeklyWeightChange());
+
+        DashboardDto dashboardDto = new DashboardDto();
+        dashboardDto.setChartData(chartDto);
+        dashboardDto.setMacroBreakdown(macroDto);
+        dashboardDto.setWeightProjection(projDto);
+
+        return ResponseEntity.ok(dashboardDto);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package com.bervan.cookbook.model;
 
 import com.bervan.common.model.BervanOwnedBaseEntity;
+import com.bervan.core.model.BaseModel;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public class DietDay extends BervanOwnedBaseEntity<UUID> {
+public class DietDay extends BervanOwnedBaseEntity<UUID> implements BaseModel<UUID> {
 
     @Id
     private UUID id;
@@ -47,67 +48,159 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> {
     }
 
     @Override
-    public UUID getId() { return id; }
+    public UUID getId() {
+        return id;
+    }
 
     @Override
-    public void setId(UUID id) { this.id = id; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
     @Override
-    public LocalDateTime getModificationDate() { return modificationDate; }
+    public LocalDateTime getModificationDate() {
+        return modificationDate;
+    }
 
     @Override
-    public void setModificationDate(LocalDateTime modificationDate) { this.modificationDate = modificationDate; }
+    public void setModificationDate(LocalDateTime modificationDate) {
+        this.modificationDate = modificationDate;
+    }
 
     @Override
-    public Boolean isDeleted() { return deleted; }
+    public Boolean isDeleted() {
+        return deleted;
+    }
 
-    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
+    }
 
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
+    public LocalDate getDate() {
+        return date;
+    }
 
-    public Integer getTargetKcal() { return targetKcal; }
-    public void setTargetKcal(Integer targetKcal) { this.targetKcal = targetKcal; }
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
 
-    public Integer getEstimatedDailyKcal() { return estimatedDailyKcal; }
-    public void setEstimatedDailyKcal(Integer estimatedDailyKcal) { this.estimatedDailyKcal = estimatedDailyKcal; }
+    public Integer getTargetKcal() {
+        return targetKcal;
+    }
 
-    public Integer getTargetProtein() { return targetProtein; }
-    public void setTargetProtein(Integer targetProtein) { this.targetProtein = targetProtein; }
+    public void setTargetKcal(Integer targetKcal) {
+        this.targetKcal = targetKcal;
+    }
 
-    public Integer getTargetCarbs() { return targetCarbs; }
-    public void setTargetCarbs(Integer targetCarbs) { this.targetCarbs = targetCarbs; }
+    public Integer getEstimatedDailyKcal() {
+        return estimatedDailyKcal;
+    }
 
-    public Integer getTargetFat() { return targetFat; }
-    public void setTargetFat(Integer targetFat) { this.targetFat = targetFat; }
+    public void setEstimatedDailyKcal(Integer estimatedDailyKcal) {
+        this.estimatedDailyKcal = estimatedDailyKcal;
+    }
 
-    public Integer getTargetFiber() { return targetFiber; }
-    public void setTargetFiber(Integer targetFiber) { this.targetFiber = targetFiber; }
+    public Integer getTargetProtein() {
+        return targetProtein;
+    }
 
-    public Integer getActivityKcal() { return activityKcal; }
-    public void setActivityKcal(Integer activityKcal) { this.activityKcal = activityKcal; }
+    public void setTargetProtein(Integer targetProtein) {
+        this.targetProtein = targetProtein;
+    }
 
-    public Integer getActivityKcalPercent() { return activityKcalPercent; }
-    public void setActivityKcalPercent(Integer activityKcalPercent) { this.activityKcalPercent = activityKcalPercent; }
+    public Integer getTargetCarbs() {
+        return targetCarbs;
+    }
 
-    public Double getWeightKg() { return weightKg; }
-    public void setWeightKg(Double weightKg) { this.weightKg = weightKg; }
+    public void setTargetCarbs(Integer targetCarbs) {
+        this.targetCarbs = targetCarbs;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public Integer getTargetFat() {
+        return targetFat;
+    }
 
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
+    public void setTargetFat(Integer targetFat) {
+        this.targetFat = targetFat;
+    }
 
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
+    public Integer getTargetFiber() {
+        return targetFiber;
+    }
 
-    public Integer getHeightCm() { return heightCm; }
-    public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }
+    public void setTargetFiber(Integer targetFiber) {
+        this.targetFiber = targetFiber;
+    }
 
-    public String getActivityLevel() { return activityLevel; }
-    public void setActivityLevel(String activityLevel) { this.activityLevel = activityLevel; }
+    public Integer getActivityKcal() {
+        return activityKcal;
+    }
 
-    public List<DietMeal> getMeals() { return meals; }
-    public void setMeals(List<DietMeal> meals) { this.meals = meals; }
+    public void setActivityKcal(Integer activityKcal) {
+        this.activityKcal = activityKcal;
+    }
+
+    public Integer getActivityKcalPercent() {
+        return activityKcalPercent;
+    }
+
+    public void setActivityKcalPercent(Integer activityKcalPercent) {
+        this.activityKcalPercent = activityKcalPercent;
+    }
+
+    public Double getWeightKg() {
+        return weightKg;
+    }
+
+    public void setWeightKg(Double weightKg) {
+        this.weightKg = weightKg;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public Integer getHeightCm() {
+        return heightCm;
+    }
+
+    public void setHeightCm(Integer heightCm) {
+        this.heightCm = heightCm;
+    }
+
+    public String getActivityLevel() {
+        return activityLevel;
+    }
+
+    public void setActivityLevel(String activityLevel) {
+        this.activityLevel = activityLevel;
+    }
+
+    public List<DietMeal> getMeals() {
+        return meals;
+    }
+
+    public void setMeals(List<DietMeal> meals) {
+        this.meals = meals;
+    }
 }

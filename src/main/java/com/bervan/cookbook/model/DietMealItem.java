@@ -1,6 +1,7 @@
 package com.bervan.cookbook.model;
 
 import com.bervan.common.model.BervanOwnedBaseEntity;
+import com.bervan.core.model.BaseModel;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -8,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
+public class DietMealItem extends BervanOwnedBaseEntity<UUID> implements BaseModel<UUID> {
 
     @Id
     private UUID id;
@@ -35,7 +36,8 @@ public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
     private boolean deleted;
     private LocalDateTime modificationDate;
 
-    public DietMealItem() {}
+    public DietMealItem() {
+    }
 
     public double getEffectiveKcal() {
         if (ingredient != null && ingredient.hasMacros() && amountGrams != null) {
@@ -80,46 +82,103 @@ public class DietMealItem extends BervanOwnedBaseEntity<UUID> {
     }
 
     @Override
-    public UUID getId() { return id; }
+    public UUID getId() {
+        return id;
+    }
 
     @Override
-    public void setId(UUID id) { this.id = id; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
     @Override
-    public LocalDateTime getModificationDate() { return modificationDate; }
+    public LocalDateTime getModificationDate() {
+        return modificationDate;
+    }
 
     @Override
-    public void setModificationDate(LocalDateTime modificationDate) { this.modificationDate = modificationDate; }
+    public void setModificationDate(LocalDateTime modificationDate) {
+        this.modificationDate = modificationDate;
+    }
 
     @Override
-    public Boolean isDeleted() { return deleted; }
+    public Boolean isDeleted() {
+        return deleted;
+    }
 
-    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
+    }
 
-    public DietMeal getMeal() { return meal; }
-    public void setMeal(DietMeal meal) { this.meal = meal; }
+    public DietMeal getMeal() {
+        return meal;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setMeal(DietMeal meal) {
+        this.meal = meal;
+    }
 
-    public Double getKcal() { return kcal; }
-    public void setKcal(Double kcal) { this.kcal = kcal; }
+    public String getDescription() {
+        return description;
+    }
 
-    public Double getProtein() { return protein; }
-    public void setProtein(Double protein) { this.protein = protein; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public Double getFat() { return fat; }
-    public void setFat(Double fat) { this.fat = fat; }
+    public Double getKcal() {
+        return kcal;
+    }
 
-    public Double getCarbs() { return carbs; }
-    public void setCarbs(Double carbs) { this.carbs = carbs; }
+    public void setKcal(Double kcal) {
+        this.kcal = kcal;
+    }
 
-    public Double getFiber() { return fiber; }
-    public void setFiber(Double fiber) { this.fiber = fiber; }
+    public Double getProtein() {
+        return protein;
+    }
 
-    public Ingredient getIngredient() { return ingredient; }
-    public void setIngredient(Ingredient ingredient) { this.ingredient = ingredient; }
+    public void setProtein(Double protein) {
+        this.protein = protein;
+    }
 
-    public Double getAmountGrams() { return amountGrams; }
-    public void setAmountGrams(Double amountGrams) { this.amountGrams = amountGrams; }
+    public Double getFat() {
+        return fat;
+    }
+
+    public void setFat(Double fat) {
+        this.fat = fat;
+    }
+
+    public Double getCarbs() {
+        return carbs;
+    }
+
+    public void setCarbs(Double carbs) {
+        this.carbs = carbs;
+    }
+
+    public Double getFiber() {
+        return fiber;
+    }
+
+    public void setFiber(Double fiber) {
+        this.fiber = fiber;
+    }
+
+    public Ingredient getIngredient() {
+        return ingredient;
+    }
+
+    public void setIngredient(Ingredient ingredient) {
+        this.ingredient = ingredient;
+    }
+
+    public Double getAmountGrams() {
+        return amountGrams;
+    }
+
+    public void setAmountGrams(Double amountGrams) {
+        this.amountGrams = amountGrams;
+    }
 }
