@@ -2,6 +2,7 @@ package com.bervan.cookbook.model;
 
 import com.bervan.common.model.BervanOwnedBaseEntity;
 import com.bervan.common.model.PersistableTableOwnedData;
+import com.bervan.core.model.BaseModel;
 import com.bervan.ieentities.ExcelIEEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
@@ -13,7 +14,7 @@ import java.util.UUID;
 
 @Entity
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public class Ingredient extends BervanOwnedBaseEntity<UUID> implements PersistableTableOwnedData<UUID>, ExcelIEEntity<UUID> {
+public class Ingredient extends BervanOwnedBaseEntity<UUID> implements PersistableTableOwnedData<UUID>, ExcelIEEntity<UUID>, BaseModel<UUID> {
     public static final String Ingredient_name_columnName = "name";
     public static final String Ingredient_category_columnName = "category";
     public static final String Ingredient_kcalPer100g_columnName = "kcalPer100g";

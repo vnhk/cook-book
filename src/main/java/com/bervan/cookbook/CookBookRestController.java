@@ -27,8 +27,8 @@ public class CookBookRestController {
     private final UnitConversionEngine unitConversionEngine;
 
     public CookBookRestController(RecipeService recipeService, IngredientService ingredientService,
-                                   ShoppingCartService shoppingCartService, RecipeMatchingEngine matchingEngine,
-                                   RecipeImportService importService, UnitConversionEngine unitConversionEngine) {
+                                  ShoppingCartService shoppingCartService, RecipeMatchingEngine matchingEngine,
+                                  RecipeImportService importService, UnitConversionEngine unitConversionEngine) {
         this.recipeService = recipeService;
         this.ingredientService = ingredientService;
         this.shoppingCartService = shoppingCartService;
@@ -38,34 +38,6 @@ public class CookBookRestController {
     }
 
     // ─── DTOs ────────────────────────────────────────────────────────────────
-
-    record IngredientDto(UUID id, String name, String icon, String category,
-                         Double kcalPer100g, Double proteinPer100g, Double fatPer100g,
-                         Double carbsPer100g, Double fiberPer100g) {}
-
-    record RecipeIngredientDto(UUID id, UUID ingredientId, String ingredientName,
-                                String ingredientIcon, Double quantity, String unit,
-                                String unitDisplayName, Boolean optional, String category,
-                                String originalText) {}
-
-    record RecipeDto(UUID id, String name, String description, String instruction,
-                     Integer prepTime, Integer cookTime, Integer totalTime,
-                     Integer servings, Integer totalCalories, Double averageRating,
-                     Integer ratingCount, Boolean favorite, List<String> tags,
-                     String requiredEquipment, String mainImageUrl, String sourceUrl,
-                     List<RecipeIngredientDto> ingredients) {}
-
-    record CartItemDto(UUID id, UUID ingredientId, String ingredientName,
-                       Double quantity, String unit, String unitDisplayName,
-                       Boolean purchased, UUID sourceRecipeId, String sourceRecipeName) {}
-
-    record CartDto(UUID id, String name, Boolean archived, List<CartItemDto> items) {}
-
-    record RecipeMatchDto(UUID id, String name, Double averageRating, Integer ratingCount,
-                           String mainImageUrl, int matchCount, double coveragePercent,
-                           List<String> matched, List<String> missing) {}
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private IngredientDto toIngDto(Ingredient i) {
         return new IngredientDto(i.getId(), i.getName(), i.getIcon(), i.getCategory(),
@@ -120,7 +92,7 @@ public class CookBookRestController {
         return new CartDto(c.getId(), c.getName(), c.getArchived(), items);
     }
 
-    // ─── Recipes ─────────────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     @GetMapping("/recipes")
     public ResponseEntity<Page<RecipeDto>> listRecipes(
@@ -177,6 +149,8 @@ public class CookBookRestController {
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // ─── Recipes ─────────────────────────────────────────────────────────────
+
     @DeleteMapping("/recipes/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable UUID id) {
         return recipeService.loadById(id).map(r -> {
@@ -193,15 +167,15 @@ public class CookBookRestController {
 
     @PostMapping("/recipes/{id}/rate")
     public ResponseEntity<Void> rateRecipe(@PathVariable UUID id,
-                                            @RequestParam int rating,
-                                            @RequestParam(required = false) String comment) {
+                                           @RequestParam int rating,
+                                           @RequestParam(required = false) String comment) {
         recipeService.addRating(id, rating, comment);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/recipes/{id}/ingredients")
     public ResponseEntity<RecipeIngredientDto> addIngredient(@PathVariable UUID id,
-                                                              @RequestBody Map<String, Object> req) {
+                                                             @RequestBody Map<String, Object> req) {
         return recipeService.loadById(id).map(recipe -> {
             String ingName = (String) req.get("ingredientName");
             UUID ingId = req.containsKey("ingredientId")
@@ -265,10 +239,14 @@ public class CookBookRestController {
         if (req.containsKey("name")) r.setName((String) req.get("name"));
         if (req.containsKey("description")) r.setDescription((String) req.get("description"));
         if (req.containsKey("instruction")) r.setInstruction((String) req.get("instruction"));
-        if (req.containsKey("prepTime")) r.setPrepTime(req.get("prepTime") != null ? ((Number) req.get("prepTime")).intValue() : null);
-        if (req.containsKey("cookTime")) r.setCookTime(req.get("cookTime") != null ? ((Number) req.get("cookTime")).intValue() : null);
-        if (req.containsKey("servings")) r.setServings(req.get("servings") != null ? ((Number) req.get("servings")).intValue() : null);
-        if (req.containsKey("totalCalories")) r.setTotalCalories(req.get("totalCalories") != null ? ((Number) req.get("totalCalories")).intValue() : null);
+        if (req.containsKey("prepTime"))
+            r.setPrepTime(req.get("prepTime") != null ? ((Number) req.get("prepTime")).intValue() : null);
+        if (req.containsKey("cookTime"))
+            r.setCookTime(req.get("cookTime") != null ? ((Number) req.get("cookTime")).intValue() : null);
+        if (req.containsKey("servings"))
+            r.setServings(req.get("servings") != null ? ((Number) req.get("servings")).intValue() : null);
+        if (req.containsKey("totalCalories"))
+            r.setTotalCalories(req.get("totalCalories") != null ? ((Number) req.get("totalCalories")).intValue() : null);
         if (req.containsKey("requiredEquipment")) r.setRequiredEquipment((String) req.get("requiredEquipment"));
         if (req.containsKey("mainImageUrl")) r.setMainImageUrl((String) req.get("mainImageUrl"));
         if (req.containsKey("sourceUrl")) r.setSourceUrl((String) req.get("sourceUrl"));
@@ -280,59 +258,6 @@ public class CookBookRestController {
         }
     }
 
-    // ─── Ingredients ─────────────────────────────────────────────────────────
-
-    @GetMapping("/ingredients")
-    public ResponseEntity<List<IngredientDto>> searchIngredients(
-            @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "50") int limit
-    ) {
-        String q = search.isBlank() ? "a" : search;
-        List<IngredientDto> results = ingredientService.searchByText(q, offset, limit)
-                .stream().map(this::toIngDto).collect(Collectors.toList());
-        return ResponseEntity.ok(results);
-    }
-
-    @PostMapping("/ingredients")
-    public ResponseEntity<IngredientDto> createIngredient(@RequestBody Map<String, Object> req) {
-        Ingredient ing = new Ingredient();
-        ing.setId(UUID.randomUUID());
-        ing.setModificationDate(LocalDateTime.now());
-        ing.setDeleted(false);
-        applyIngredientFields(ing, req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toIngDto(ingredientService.save(ing)));
-    }
-
-    @PutMapping("/ingredients/{id}")
-    public ResponseEntity<IngredientDto> updateIngredient(@PathVariable UUID id,
-                                                           @RequestBody Map<String, Object> req) {
-        return ingredientService.loadById(id).map(ing -> {
-            applyIngredientFields(ing, req);
-            ing.setModificationDate(LocalDateTime.now());
-            return ResponseEntity.ok(toIngDto(ingredientService.save(ing)));
-        }).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/ingredients/{id}")
-    public ResponseEntity<Void> deleteIngredient(@PathVariable UUID id) {
-        return ingredientService.loadById(id).map(ing -> {
-            ingredientService.delete(ing);
-            return ResponseEntity.noContent().<Void>build();
-        }).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    private void applyIngredientFields(Ingredient ing, Map<String, Object> req) {
-        if (req.containsKey("name")) ing.setName((String) req.get("name"));
-        if (req.containsKey("icon")) ing.setIcon((String) req.get("icon"));
-        if (req.containsKey("category")) ing.setCategory((String) req.get("category"));
-        if (req.containsKey("kcalPer100g")) ing.setKcalPer100g(req.get("kcalPer100g") != null ? ((Number) req.get("kcalPer100g")).doubleValue() : null);
-        if (req.containsKey("proteinPer100g")) ing.setProteinPer100g(req.get("proteinPer100g") != null ? ((Number) req.get("proteinPer100g")).doubleValue() : null);
-        if (req.containsKey("fatPer100g")) ing.setFatPer100g(req.get("fatPer100g") != null ? ((Number) req.get("fatPer100g")).doubleValue() : null);
-        if (req.containsKey("carbsPer100g")) ing.setCarbsPer100g(req.get("carbsPer100g") != null ? ((Number) req.get("carbsPer100g")).doubleValue() : null);
-        if (req.containsKey("fiberPer100g")) ing.setFiberPer100g(req.get("fiberPer100g") != null ? ((Number) req.get("fiberPer100g")).doubleValue() : null);
-    }
-
     @GetMapping("/units")
     public ResponseEntity<List<Map<String, String>>> units() {
         List<Map<String, String>> result = Arrays.stream(CulinaryUnit.values())
@@ -340,8 +265,6 @@ public class CookBookRestController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(result);
     }
-
-    // ─── Shopping Carts ──────────────────────────────────────────────────────
 
     @GetMapping("/shopping-carts")
     public ResponseEntity<List<CartDto>> listCarts() {
@@ -387,10 +310,12 @@ public class CookBookRestController {
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // ─── Shopping Carts ──────────────────────────────────────────────────────
+
     @PostMapping("/shopping-carts/{id}/add-recipe")
     public ResponseEntity<Void> addRecipeToCart(@PathVariable UUID id,
-                                                 @RequestParam UUID recipeId,
-                                                 @RequestParam(defaultValue = "1.0") double multiplier) {
+                                                @RequestParam UUID recipeId,
+                                                @RequestParam(defaultValue = "1.0") double multiplier) {
         return recipeService.loadById(recipeId).map(recipe -> {
             shoppingCartService.addFromRecipe(id, recipe, multiplier);
             return ResponseEntity.ok().<Void>build();
@@ -410,8 +335,6 @@ public class CookBookRestController {
         return ResponseEntity.ok(shoppingCartService.exportToText(id));
     }
 
-    // ─── Fridge Search ───────────────────────────────────────────────────────
-
     @PostMapping("/search")
     public ResponseEntity<List<RecipeMatchDto>> search(@RequestBody Map<String, Object> req) {
         @SuppressWarnings("unchecked")
@@ -430,5 +353,34 @@ public class CookBookRestController {
                 )).collect(Collectors.toList());
 
         return ResponseEntity.ok(results);
+    }
+
+    record RecipeIngredientDto(UUID id, UUID ingredientId, String ingredientName,
+                               String ingredientIcon, Double quantity, String unit,
+                               String unitDisplayName, Boolean optional, String category,
+                               String originalText) {
+    }
+
+    record RecipeDto(UUID id, String name, String description, String instruction,
+                     Integer prepTime, Integer cookTime, Integer totalTime,
+                     Integer servings, Integer totalCalories, Double averageRating,
+                     Integer ratingCount, Boolean favorite, List<String> tags,
+                     String requiredEquipment, String mainImageUrl, String sourceUrl,
+                     List<RecipeIngredientDto> ingredients) {
+    }
+
+    record CartItemDto(UUID id, UUID ingredientId, String ingredientName,
+                       Double quantity, String unit, String unitDisplayName,
+                       Boolean purchased, UUID sourceRecipeId, String sourceRecipeName) {
+    }
+
+    record CartDto(UUID id, String name, Boolean archived, List<CartItemDto> items) {
+    }
+
+    // ─── Fridge Search ───────────────────────────────────────────────────────
+
+    record RecipeMatchDto(UUID id, String name, Double averageRating, Integer ratingCount,
+                          String mainImageUrl, int matchCount, double coveragePercent,
+                          List<String> matched, List<String> missing) {
     }
 }
