@@ -2,6 +2,7 @@ package com.bervan.cookbook;
 
 import com.bervan.common.config.EntityConfigValidator;
 import com.bervan.common.controller.BaseOwnedController;
+import com.bervan.common.controller.ImportResult;
 import com.bervan.common.mapper.BervanDTOMapper;
 import com.bervan.cookbook.model.Ingredient;
 import com.bervan.cookbook.service.IngredientService;
