@@ -19,12 +19,12 @@ public class IngredientDto implements BaseDTO<UUID> {
     private String name;
     private String icon;
     private String category;
-    private String notes;
     private Double kcalPer100g;
     private Double proteinPer100g;
     private Double fatPer100g;
     private Double carbsPer100g;
     private Double fiberPer100g;
+    private String notes;
 
     @Override
     public Class<? extends BaseModel<UUID>> dtoTarget() {

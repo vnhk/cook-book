@@ -37,14 +37,6 @@ public class CookBookRestController {
         this.unitConversionEngine = unitConversionEngine;
     }
 
-    // ─── DTOs ────────────────────────────────────────────────────────────────
-
-    private IngredientDto toIngDto(Ingredient i) {
-        return new IngredientDto(i.getId(), i.getName(), i.getIcon(), i.getCategory(),
-                i.getKcalPer100g(), i.getProteinPer100g(), i.getFatPer100g(),
-                i.getCarbsPer100g(), i.getFiberPer100g());
-    }
-
     private RecipeIngredientDto toRiDto(RecipeIngredient ri) {
         Ingredient ing = ri.getIngredient();
         CulinaryUnit unit = ri.getUnit();
