@@ -19,6 +19,7 @@ public class IngredientDto implements BaseDTO<UUID> {
     private String name;
     private String icon;
     private String category;
+    private String notes;
     private Double kcalPer100g;
     private Double proteinPer100g;
     private Double fatPer100g;
