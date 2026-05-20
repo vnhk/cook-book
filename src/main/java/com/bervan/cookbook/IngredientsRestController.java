@@ -53,7 +53,7 @@ public class IngredientsRestController extends BaseOwnedController {
 
     @GetMapping("/export")
     public ResponseEntity<byte[]> export(@RequestParam MultiValueMap<String, String> allParams) {
-        return super.exportAll(allParams, IngredientDto.class, "stock-alerts", Ingredient.class);
+        return super.exportAll(allParams, IngredientDto.class, "ingredients", Ingredient.class);
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
