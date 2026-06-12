@@ -1,8 +1,14 @@
 package com.bervan.cookbook.service;
 
+import com.bervan.common.search.SearchQueryOption;
+import com.bervan.common.search.SearchRequest;
 import com.bervan.common.search.SearchService;
+import com.bervan.common.search.model.SearchOperation;
+import com.bervan.common.search.model.SearchResponse;
 import com.bervan.common.service.BaseService;
-import com.bervan.cookbook.model.*;
+import com.bervan.cookbook.model.DietDay;
+import com.bervan.cookbook.model.DietMeal;
+import com.bervan.cookbook.model.DietMealItem;
 import com.bervan.cookbook.repository.DietDayRepository;
 import com.bervan.cookbook.repository.DietMealItemRepository;
 import org.springframework.stereotype.Service;
@@ -15,37 +21,55 @@ import java.util.UUID;
 @Service
 public class DietService extends BaseService<UUID, DietDay> {
 
-    private final DietDayRepository dietDayRepository;
     private final DietMealItemRepository dietMealItemRepository;
 
     public DietService(DietDayRepository repository, SearchService searchService,
                        DietMealItemRepository dietMealItemRepository) {
         super(repository, searchService);
-        this.dietDayRepository = repository;
         this.dietMealItemRepository = dietMealItemRepository;
     }
 
     public DietDay getOrCreateDay(LocalDate date) {
-        return dietDayRepository.findByDateAndDeletedFalse(date).orElseGet(() -> {
-            DietDay day = new DietDay();
-            day.setId(UUID.randomUUID());
-            day.setDate(date);
-            dietDayRepository.findByDateAndDeletedFalse(date.minusDays(1)).ifPresent(prev -> {
-                day.setTargetKcal(prev.getTargetKcal());
-                day.setEstimatedDailyKcal(prev.getEstimatedDailyKcal());
-                day.setTargetProtein(prev.getTargetProtein());
-                day.setTargetCarbs(prev.getTargetCarbs());
-                day.setTargetFat(prev.getTargetFat());
-                day.setTargetFiber(prev.getTargetFiber());
-                day.setActivityKcal(prev.getActivityKcal());
-                day.setActivityKcalPercent(prev.getActivityKcalPercent());
-                day.setAge(prev.getAge());
-                day.setGender(prev.getGender());
-                day.setHeightCm(prev.getHeightCm());
-                day.setActivityLevel(prev.getActivityLevel());
-            });
+        return findByDateAndDeletedFalse(date).orElseGet(() -> {
+            DietDay day = getDietDay(date);
+
+            int maxDaysToCheck = 30;
+            while (day.getTargetKcal() == null && maxDaysToCheck-- > 0) {
+                day = getDietDay(date.minusDays(1));
+            }
+
             return save(day);
         });
+    }
+
+    private DietDay getDietDay(LocalDate date) {
+        DietDay day = new DietDay();
+        day.setId(UUID.randomUUID());
+        day.setDate(date);
+        findByDateAndDeletedFalse(date.minusDays(1)).ifPresent(prev -> {
+            day.setTargetKcal(prev.getTargetKcal());
+            day.setEstimatedDailyKcal(prev.getEstimatedDailyKcal());
+            day.setTargetProtein(prev.getTargetProtein());
+            day.setTargetCarbs(prev.getTargetCarbs());
+            day.setTargetFat(prev.getTargetFat());
+            day.setTargetFiber(prev.getTargetFiber());
+            day.setActivityKcal(prev.getActivityKcal());
+            day.setActivityKcalPercent(prev.getActivityKcalPercent());
+            day.setAge(prev.getAge());
+            day.setGender(prev.getGender());
+            day.setHeightCm(prev.getHeightCm());
+            day.setActivityLevel(prev.getActivityLevel());
+        });
+        return day;
+    }
+
+    public Optional<DietDay> findByDateAndDeletedFalse(LocalDate date) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchQueryOption searchQueryOption = new SearchQueryOption();
+        searchQueryOption.setEntityToFind(DietDay.class);
+        searchRequest.addCriterion("BY_DATE", DietDay.class, "date", SearchOperation.EQUALS_OPERATION, date);
+        SearchResponse<DietDay> search = searchService.search(searchRequest, searchQueryOption);
+        return search.getFirstResult();
     }
 
     public DietMeal getOrCreateMeal(DietDay day, DietMeal.MealType type) {
@@ -82,10 +106,10 @@ public class DietService extends BaseService<UUID, DietDay> {
     }
 
     public void updateDayTargets(DietDay day, Integer targetKcal, Integer estimatedDailyKcal,
-                                  Integer targetProtein, Integer targetCarbs, Integer targetFat,
-                                  Integer targetFiber, Integer activityKcal, Integer activityKcalPercent,
-                                  Double weightKg, String notes, Integer age, String gender,
-                                  Integer heightCm, String activityLevel) {
+                                 Integer targetProtein, Integer targetCarbs, Integer targetFat,
+                                 Integer targetFiber, Integer activityKcal, Integer activityKcalPercent,
+                                 Double weightKg, String notes, Integer age, String gender,
+                                 Integer heightCm, String activityLevel) {
         day.setTargetKcal(targetKcal);
         day.setEstimatedDailyKcal(estimatedDailyKcal);
         day.setTargetProtein(targetProtein);
@@ -104,7 +128,7 @@ public class DietService extends BaseService<UUID, DietDay> {
     }
 
     public void copyMealItems(DietDay targetDay, DietMeal.MealType targetType,
-                               LocalDate sourceDate, DietMeal.MealType sourceType) {
+                              LocalDate sourceDate, DietMeal.MealType sourceType) {
         Optional<DietDay> sourceOpt = findByDate(sourceDate);
         if (sourceOpt.isEmpty()) return;
         DietDay sourceDay = sourceOpt.get();
@@ -143,12 +167,23 @@ public class DietService extends BaseService<UUID, DietDay> {
     }
 
     public Optional<DietDay> findByDate(LocalDate date) {
-        return dietDayRepository.findByDateAndDeletedFalse(date);
+        return findByDateAndDeletedFalse(date);
     }
 
     public List<DietDay> getRange(LocalDate from, LocalDate to) {
-        return dietDayRepository.findByDateBetweenAndDeletedFalseOrderByDate(from, to);
+        return findByDateBetweenAndDeletedFalseOrderByDate(from, to);
     }
+
+    private List<DietDay> findByDateBetweenAndDeletedFalseOrderByDate(LocalDate from, LocalDate to) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchQueryOption searchQueryOption = new SearchQueryOption();
+        searchQueryOption.setEntityToFind(DietDay.class);
+        searchRequest.addCriterion("BY_DATE_RANGE", DietDay.class, "date", SearchOperation.GREATER_EQUAL_OPERATION, from);
+        searchRequest.addCriterion("BY_DATE_RANGE", DietDay.class, "date", SearchOperation.LESS_EQUAL_OPERATION, to);
+        SearchResponse<DietDay> search = searchService.search(searchRequest, searchQueryOption);
+        return search.getResultList();
+    }
+
 
     public double totalKcal(DietDay day) {
         return day.getMeals().stream()
