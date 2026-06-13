@@ -116,6 +116,13 @@ public class DietRestController {
         return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
     }
 
+    @PostMapping("/recreate-day/{date}")
+    public ResponseEntity<DietDayDto> recreateDay(@PathVariable String date) {
+        LocalDate d = LocalDate.parse(date);
+        dietService.deleteDay(d);
+        return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
+    }
+
     @PutMapping("/day")
     public ResponseEntity<DietDayDto> updateDay(@RequestParam String date,
                                                 @RequestBody Map<String, Object> req) {

@@ -40,7 +40,7 @@ public class DietDay extends BervanOwnedBaseEntity<UUID> implements BaseModel<UU
     private LocalDateTime modificationDate;
 
     @OneToMany(mappedBy = "dietDay", fetch = FetchType.EAGER,
-            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE},
+            cascade = {CascadeType.ALL},
             orphanRemoval = true)
     private List<DietMeal> meals = new ArrayList<>();
 

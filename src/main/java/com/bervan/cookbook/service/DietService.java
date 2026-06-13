@@ -229,4 +229,13 @@ public class DietService extends BaseService<UUID, DietDay> {
                 .mapToDouble(DietMealItem::getEffectiveFiber)
                 .sum();
     }
+
+    public void deleteDay(LocalDate day) {
+        findByDateAndDeletedFalse(day).ifPresent(d -> {
+            d.setDeleted(true);
+            d.getMeals().forEach(m -> m.setDeleted(true));
+            d.getMeals().forEach(m -> m.getItems().forEach(i -> i.setDeleted(true)));
+            save(d);
+        });
+    }
 }
