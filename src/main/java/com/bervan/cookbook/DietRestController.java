@@ -6,10 +6,12 @@ import com.bervan.cookbook.model.DietMealItem;
 import com.bervan.cookbook.model.Ingredient;
 import com.bervan.cookbook.service.DietService;
 import com.bervan.cookbook.service.IngredientService;
+import com.bervan.logging.JsonLogger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,6 +21,7 @@ public class DietRestController {
 
     private final DietService dietService;
     private final IngredientService ingredientService;
+    private final JsonLogger log = JsonLogger.getLogger(DietRestController.class, "cook-book");
 
     public DietRestController(DietService dietService, IngredientService ingredientService) {
         this.dietService = dietService;
@@ -151,11 +154,8 @@ public class DietRestController {
             return ResponseEntity.badRequest().build();
         }
 
-        DietDay day = dietService.getOrCreateDay(d);
-        DietMeal meal = dietService.getOrCreateMeal(day, type);
-
         DietMealItem item = new DietMealItem();
-        item.setModificationDate(java.time.LocalDateTime.now());
+        item.setModificationDate(LocalDateTime.now());
         item.setDeleted(false);
 
         String ingredientIdStr = (String) req.get("ingredientId");
@@ -186,18 +186,88 @@ public class DietRestController {
         return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
     }
 
+
+    @PostMapping("/day/{date}/meals/auto")
+    public ResponseEntity<DietDayDto> autoMeals(@PathVariable String date,
+                                                @RequestBody Map<String, Integer> req) {
+        LocalDate d = LocalDate.parse(date);
+        DietDay day = dietService.getOrCreateDay(d);
+
+        boolean valid = validateAutoMeals(req.get("kcalPercentage"), d)
+                && validateAutoMeals(req.get("proteinPercentage"), d)
+                && validateAutoMeals(req.get("fatPercentage"), d)
+                && validateAutoMeals(req.get("carbsPercentage"), d)
+                && validateAutoMeals(req.get("fiberPercentage"), d);
+
+        if (!valid) {
+            return ResponseEntity.badRequest().body(toDayDto(day));
+        }
+
+        if (day.getTargetKcal() == null || day.getTargetProtein() == null || day.getTargetCarbs() == null || day.getTargetFiber() == null) {
+            log.error("Cannot auto-generate meals for day {}: missing targets", d);
+            return ResponseEntity.badRequest().body(toDayDto(day));
+        }
+
+        // Remove all existing meals items
+        List<DietMealItem> itemsToRemove = new ArrayList<>();
+        DietDay finalDay = day;
+        day.getMeals().stream().forEach(m -> {
+            for (DietMealItem item : m.getItems()) {
+                itemsToRemove.add(item);
+            }
+        });
+        itemsToRemove.forEach(i -> removeMealItem(i.getId(), finalDay));
+
+        day = dietService.getOrCreateDay(d); //refresh
+
+        DietMeal.MealType[] types = DietMeal.MealType.values();
+        int amountOfMeals = types.length;
+
+        for (int i = 0; i < amountOfMeals; i++) {
+            DietMeal meal = dietService.getOrCreateMeal(day, types[i]);
+            DietMealItem item = new DietMealItem();
+            item.setModificationDate(LocalDateTime.now());
+            item.setDeleted(false);
+            item.setDescription("Auto-generated meal");
+            item.setKcal(round1((double) day.getTargetKcal() * req.get("kcalPercentage") / 100 / amountOfMeals));
+            item.setCarbs(round1((double) day.getTargetCarbs() * req.get("carbsPercentage") / 100 / amountOfMeals));
+            item.setProtein(round1((double) day.getTargetProtein() * req.get("proteinPercentage") / 100 / amountOfMeals));
+            item.setFat(round1((double) day.getTargetFat() * req.get("fatPercentage") / 100 / amountOfMeals));
+            item.setFiber(round1((double) day.getTargetFiber() * req.get("fiberPercentage") / 100 / amountOfMeals));
+            dietService.addItemToMeal(day, meal, item);
+        }
+
+        return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
+    }
+
+    private boolean validateAutoMeals(Integer percentage, LocalDate d) {
+        if (percentage == null) {
+            log.error("Cannot auto-generate meals for day {}: missing percentage", d);
+            return false;
+        }
+        if (percentage < 1 || percentage > 1000) {
+            log.error("Cannot auto-generate meals for day {}: invalid percentage", d);
+            return false;
+        }
+        return true;
+    }
+
     @DeleteMapping("/day/{date}/items/{itemId}")
     public ResponseEntity<DietDayDto> removeItem(@PathVariable String date,
                                                  @PathVariable UUID itemId) {
         LocalDate d = LocalDate.parse(date);
         DietDay day = dietService.getOrCreateDay(d);
+        removeMealItem(itemId, day);
+        return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
+    }
+
+    private void removeMealItem(UUID itemId, DietDay day) {
         day.getMeals().stream()
-                .filter(m -> !Boolean.TRUE.equals(m.isDeleted()))
+                .filter(m -> Boolean.FALSE.equals(m.isDeleted()))
                 .flatMap(m -> m.getItems().stream())
-                .filter(i -> i.getId().equals(itemId) && !Boolean.TRUE.equals(i.isDeleted()))
+                .filter(i -> i.getId().equals(itemId) && Boolean.FALSE.equals(i.isDeleted()))
                 .findFirst()
                 .ifPresent(item -> dietService.removeItem(day, item));
-        return ResponseEntity.ok(toDayDto(dietService.getOrCreateDay(d)));
     }
 
     @PostMapping("/day/{date}/meals/{mealType}/copy")
