@@ -70,7 +70,7 @@ public class IngredientsRestController extends BaseOwnedController {
     }
 
     @PostMapping("/scan-nutrition-table")
-    public ResponseEntity<?> scanReceipt(@RequestBody ScanNutritionRequest req) {
+    public ResponseEntity<?> scanNutritionTable(@RequestBody ScanNutritionRequest req) {
         if (req.base64Image == null || req.base64Image.isBlank()) {
             return ResponseEntity.badRequest().body(new ValidationErrorResponse(
                     List.of(new EntityConfigValidator.FieldError("base64Image", "Image data is required"))
