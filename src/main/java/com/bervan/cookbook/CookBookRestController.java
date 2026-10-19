@@ -84,6 +84,31 @@ public class CookBookRestController {
         return new CartDto(c.getId(), c.getName(), c.getArchived(), items);
     }
 
+    private boolean matchesSearch(Recipe r, String search) {
+        String q = search.trim().toLowerCase();
+        if (q.isEmpty()) return true;
+        if (r.getName() != null && r.getName().toLowerCase().contains(q)) return true;
+        if (r.getTags() != null && r.getTags().stream().anyMatch(t -> t != null && t.toLowerCase().contains(q))) {
+            return true;
+        }
+        return r.getRecipeIngredients() != null && r.getRecipeIngredients().stream()
+                .filter(ri -> !Boolean.TRUE.equals(ri.isDeleted()) && ri.getIngredient() != null)
+                .anyMatch(ri -> ri.getIngredient().getName() != null
+                        && ri.getIngredient().getName().toLowerCase().contains(q));
+    }
+
+    private boolean matchesTag(Recipe r, String tag) {
+        String t = tag.trim().toLowerCase();
+        if (t.isEmpty()) return true;
+        if (r.getTags() != null && r.getTags().stream().anyMatch(rt -> rt != null && rt.trim().equalsIgnoreCase(t))) {
+            return true;
+        }
+        return r.getRecipeIngredients() != null && r.getRecipeIngredients().stream()
+                .filter(ri -> !Boolean.TRUE.equals(ri.isDeleted()) && ri.getIngredient() != null)
+                .anyMatch(ri -> ri.getIngredient().getName() != null
+                        && ri.getIngredient().getName().trim().equalsIgnoreCase(t));
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     @GetMapping("/recipes")
@@ -97,8 +122,9 @@ public class CookBookRestController {
 
         Set<Recipe> all = recipeService.load(new SearchRequest(), Pageable.ofSize(100000));
         List<RecipeDto> dtos = all.stream()
-                .filter(r -> search == null || r.getName().toLowerCase().contains(search.toLowerCase()))
-                .filter(r -> tag == null || (r.getTags() != null && r.getTags().contains(tag)))
+                .filter(r -> !Boolean.TRUE.equals(r.isDeleted()))
+                .filter(r -> search == null || matchesSearch(r, search))
+                .filter(r -> tag == null || matchesTag(r, tag))
                 .filter(r -> favorite == null || Objects.equals(r.getFavorite(), favorite))
                 .sorted(Comparator.comparing(Recipe::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(this::toRecipeDto)

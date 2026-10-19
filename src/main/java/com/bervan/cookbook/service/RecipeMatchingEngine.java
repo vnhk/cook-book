@@ -25,12 +25,15 @@ public class RecipeMatchingEngine {
                                                         double minCoveragePercent) {
         // 1. Normalize fridge ingredients
         Set<UUID> fridgeIngredientIds = new HashSet<>();
-        Map<UUID, Ingredient> fridgeMap = new HashMap<>();
         for (String text : fridgeIngredients) {
-            normalizationEngine.normalize(text).ifPresent(ingredient -> {
-                fridgeIngredientIds.add(ingredient.getId());
-                fridgeMap.put(ingredient.getId(), ingredient);
-            });
+            if (text == null || text.isBlank()) continue;
+            normalizationEngine.normalize(text).ifPresent(ingredient ->
+                    fridgeIngredientIds.add(ingredient.getId()));
+            for (IngredientNormalizationEngine.IngredientMatch candidate : normalizationEngine.findCandidates(text, 10)) {
+                if (candidate.getScore() >= 0.4 && candidate.getIngredient() != null) {
+                    fridgeIngredientIds.add(candidate.getIngredient().getId());
+                }
+            }
         }
 
         if (fridgeIngredientIds.isEmpty()) {

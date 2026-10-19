@@ -24,22 +24,43 @@ public class IngredientService extends BaseService<UUID, Ingredient> {
         this.aliasRepository = aliasRepository;
     }
 
+    private static final Set<String> VALID_CATEGORIES = Set.of(
+            "Nabiał", "Mięso", "Ryby", "Warzywa", "Owoce", "Przyprawy",
+            "Zboża", "Pieczywo", "Tłuszcze", "Napoje", "Słodycze",
+            "Słone Przekąski", "Suplementy", "Inne"
+    );
+
     public Ingredient findOrCreateByName(String name) {
-        Optional<Ingredient> existing = ingredientRepository.findByNameIgnoreCase(name.trim());
-        if (existing.isPresent()) {
+        return findOrCreateByName(name, null);
+    }
+
+    public Ingredient findOrCreateByName(String name, String category) {
+        String trimmed = name.trim();
+        Optional<Ingredient> existing = ingredientRepository.findByNameIgnoreCase(trimmed);
+        if (existing.isPresent() && !Boolean.TRUE.equals(existing.get().isDeleted())) {
             return existing.get();
         }
 
-        Optional<IngredientAlias> alias = aliasRepository.findByAliasNameIgnoreCase(name.trim());
-        if (alias.isPresent()) {
+        Optional<IngredientAlias> alias = aliasRepository.findByAliasNameIgnoreCase(trimmed);
+        if (alias.isPresent() && !Boolean.TRUE.equals(alias.get().isDeleted())
+                && alias.get().getIngredient() != null
+                && !Boolean.TRUE.equals(alias.get().getIngredient().isDeleted())) {
             return alias.get().getIngredient();
         }
 
         Ingredient ingredient = new Ingredient();
         ingredient.setId(UUID.randomUUID());
-        ingredient.setName(name.trim());
-        ingredient.setCategory("Inne");
+        ingredient.setName(capitalizeFirst(trimmed));
+        ingredient.setCategory(category != null && VALID_CATEGORIES.contains(category.trim())
+                ? category.trim() : "Inne");
         return save(ingredient);
+    }
+
+    private String capitalizeFirst(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        return Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
     public void addAlias(UUID ingredientId, String aliasName) {

@@ -1,6 +1,7 @@
 package com.bervan.cookbook.scraper;
 
 import com.bervan.cookbook.model.ScrapedRecipeData;
+import com.bervan.cookbook.service.RecipeAIScraperService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -8,6 +9,7 @@ import org.jsoup.safety.Safelist;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -25,6 +27,11 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
             "^\\s*(\\d+[.,]?\\d*(?:\\s*[-–/]\\s*\\d+[.,]?\\d*)?)\\s*"
     );
 
+    private static final Pattern TRAILING_METRIC_PATTERN = Pattern.compile(
+            "(?:ok\\.?\\s*|około\\s*)?(\\d+[.,]?\\d*)\\s*(g|kg|dag|dkg|ml|l)\\b",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+
     private static final Pattern UNIT_PATTERN = Pattern.compile(
             "^(g|kg|dag|dkg|ml|l|szt\\.?|sztuk[aiy]?|łyżeczk[aiy]?|łyżk[aiy]?|" +
                     "łyżeczek|łyżek|szklan(?:ka|ki|ek)|szczyp(?:ta|ty|t)|" +
@@ -35,7 +42,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
     );
 
     private static final Safelist INSTRUCTION_SAFELIST = Safelist.relaxed()
-            .addTags("img")
+            .addTags("img", "h4", "section", "article")
             .addAttributes("img", "src", "srcset", "alt", "title", "width", "height", "loading", "sizes", "class")
             .addAttributes("a", "href", "title", "target")
             .addAttributes("div", "class", "style")
@@ -43,8 +50,23 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
             .addAttributes("span", "class")
             .addAttributes("h2", "class")
             .addAttributes("h3", "class")
+            .addAttributes("h4", "class")
+            .addAttributes("ol", "class")
+            .addAttributes("ul", "class")
+            .addAttributes("li", "class")
             .removeTags("button", "form", "input", "select", "textarea", "script", "style",
                     "nav", "header", "footer", "iframe", "ins");
+
+    private final RecipeAIScraperService aiScraperService;
+
+    public AGRecipeScraper() {
+        this.aiScraperService = null;
+    }
+
+    @Autowired
+    public AGRecipeScraper(RecipeAIScraperService aiScraperService) {
+        this.aiScraperService = aiScraperService;
+    }
 
     @Override
     public String getName() {
@@ -66,7 +88,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
 
         String name = extractName(recipeElement);
         String description = extractDescription(recipeElement);
-        String instructionHtml = extractInstructionHtml(recipeElement);
+        String rawInstructionHtml = extractInstructionHtml(recipeElement);
         Integer prepTime = extractDurationMinutes(recipeElement, "prepTime");
         Integer cookTime = extractDurationMinutes(recipeElement, "cookTime");
         Integer servings = extractServings(recipeElement);
@@ -77,11 +99,27 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         Integer ratingCount = extractRatingCount(recipeElement);
 
         List<ScrapedRecipeData.ScrapedIngredientLine> ingredientLines = extractIngredients(recipeElement);
+        String fullRecipeContext = buildFullRecipeContext(recipeElement, name, description, ingredientLines);
+
+        List<ScrapedRecipeData.ScrapedIngredientLine> finalIngredients = ingredientLines;
+        String finalInstructionHtml = rawInstructionHtml;
+
+        if (aiScraperService != null) {
+            Element ingContainer = recipeElement.selectFirst("#recipeIngredients");
+            String rawIngredientsHtml = ingContainer != null
+                    ? ingContainer.html()
+                    : recipeElement.select("[itemprop=recipeIngredient], .recipe-ing-list li").outerHtml();
+
+            finalIngredients = aiScraperService.unifyIngredients(rawIngredientsHtml, ingredientLines);
+            finalInstructionHtml = aiScraperService.summarizeInstructions(
+                    rawInstructionHtml, fullRecipeContext, finalIngredients,
+                    recipeElement.baseUri(), INSTRUCTION_SAFELIST);
+        }
 
         return ScrapedRecipeData.builder()
                 .name(name)
                 .description(description)
-                .instructionHtml(instructionHtml)
+                .instructionHtml(finalInstructionHtml)
                 .prepTime(prepTime)
                 .cookTime(cookTime)
                 .servings(servings)
@@ -91,7 +129,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
                 .tags(tags)
                 .sourceUrl("")
                 .mainImageUrl(mainImageUrl)
-                .ingredientLines(ingredientLines)
+                .ingredientLines(finalIngredients)
                 .build();
     }
 
@@ -149,6 +187,40 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         return Jsoup.clean(html, root.baseUri(), INSTRUCTION_SAFELIST);
     }
 
+    private String buildFullRecipeContext(Element root,
+                                          String name,
+                                          String description,
+                                          List<ScrapedRecipeData.ScrapedIngredientLine> rawIngredients) {
+        StringBuilder sb = new StringBuilder();
+        if (name != null) {
+            sb.append("Nazwa dania: ").append(name).append("\n");
+        }
+        if (description != null && !description.isBlank()) {
+            sb.append("Opis: ").append(description).append("\n");
+        }
+        Element recipeInfo = root.selectFirst(".recipe-info");
+        if (recipeInfo != null) {
+            sb.append("Informacje o przepisie: ").append(recipeInfo.text().trim()).append("\n");
+        }
+        Element ingContainer = root.selectFirst("#recipeIngredients");
+        if (ingContainer != null) {
+            sb.append("\nPełna sekcja składników z przepisu:\n").append(ingContainer.text().trim()).append("\n");
+        } else if (rawIngredients != null && !rawIngredients.isEmpty()) {
+            sb.append("\nLista składników:\n");
+            for (ScrapedRecipeData.ScrapedIngredientLine line : rawIngredients) {
+                sb.append("- ").append(line.getOriginalText()).append("\n");
+            }
+        }
+        Element instructionEl = root.selectFirst("[itemprop=recipeInstructions]");
+        if (instructionEl == null) {
+            instructionEl = root.selectFirst(".article-content-body");
+        }
+        if (instructionEl != null) {
+            sb.append("\nPełna treść przygotowania przepisu:\n").append(instructionEl.text().trim()).append("\n");
+        }
+        return sb.toString();
+    }
+
     private Integer extractDurationMinutes(Element root, String itemprop) {
         Element meta = root.selectFirst("meta[itemprop=" + itemprop + "]");
         if (meta != null) {
@@ -180,12 +252,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
     }
 
     private Integer parseMinutesFromText(String text) {
-        if (text == null) return null;
-        Matcher m = Pattern.compile("(\\d+)").matcher(text);
-        if (m.find()) {
-            return Integer.parseInt(m.group(1));
-        }
-        return null;
+        return parseFirstNumber(text);
     }
 
     private Integer extractServings(Element root) {
@@ -303,14 +370,37 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         }
 
         for (Element ing : ingredients) {
-            String text = ing.text().trim();
+            Element nameSpan = ing.selectFirst(".ingredient, .ing-name, .name");
+            Element qtySpan = ing.selectFirst(".qty, .ing-num, .amount");
+
+            String text;
+            if (nameSpan != null && qtySpan != null) {
+                text = nameSpan.text().trim() + " - " + qtySpan.text().trim();
+            } else {
+                text = ing.text().trim();
+            }
             if (text.isEmpty()) continue;
 
+            String sectionCategory = findSectionCategory(ing);
             ScrapedRecipeData.ScrapedIngredientLine line = parseIngredientLine(text);
+            if (sectionCategory != null && line.getCategory() == null) {
+                line.setCategory(sectionCategory);
+            }
             lines.add(line);
         }
 
         return lines;
+    }
+
+    private String findSectionCategory(Element ingElement) {
+        Element ul = ingElement.closest("ul, ol");
+        if (ul != null) {
+            Element prev = ul.previousElementSibling();
+            if (prev != null && (prev.hasClass("ing-header") || prev.tagName().matches("h[2-5]"))) {
+                return prev.text().trim();
+            }
+        }
+        return null;
     }
 
     ScrapedRecipeData.ScrapedIngredientLine parseIngredientLine(String text) {
@@ -318,29 +408,74 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         Double quantity = null;
         String unitText = null;
         String ingredientText;
+        boolean optional = remaining.toLowerCase().contains("opcjonalnie");
 
-        Matcher qm = QUANTITY_PATTERN.matcher(remaining);
-        if (qm.find()) {
-            String qStr = qm.group(1).replace(",", ".").replaceAll("\\s+", "");
-            if (qStr.contains("-") || qStr.contains("–")) {
-                qStr = qStr.split("[-–]")[0].trim();
-            }
-            if (qStr.contains("/")) {
-                String[] parts = qStr.split("/");
-                try {
-                    quantity = Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]);
-                } catch (NumberFormatException e) {
-                    quantity = null;
+        // Case 1: "Nazwa składnika - 100 g" or "Nazwa składnika - 2 szklanki - 320 g" (AniaGotuje format)
+        if (remaining.contains(" - ") || remaining.contains(" – ")) {
+            String[] parts = remaining.split("\\s+[-–]\\s+", 2);
+            String firstPart = parts[0].trim();
+            String secondPart = parts[1].trim();
+
+            if (!QUANTITY_PATTERN.matcher(firstPart).find()) {
+                ingredientText = capitalizeFirst(firstPart);
+                Matcher metricMatcher = TRAILING_METRIC_PATTERN.matcher(secondPart);
+                if (metricMatcher.find()) {
+                    quantity = parseQuantityValue(metricMatcher.group(1));
+                    unitText = metricMatcher.group(2).trim();
+                } else {
+                    ParsedQtyUnit pqu = parseLeadingQuantityAndUnit(secondPart);
+                    quantity = pqu.quantity;
+                    unitText = pqu.unitText;
                 }
-            } else {
-                try {
-                    quantity = Double.parseDouble(qStr);
-                } catch (NumberFormatException e) {
-                    quantity = null;
-                }
+                String formattedOriginal = formatOriginalText(ingredientText, quantity, unitText, text);
+                return ScrapedRecipeData.ScrapedIngredientLine.builder()
+                        .originalText(formattedOriginal)
+                        .quantity(quantity)
+                        .unitText(unitText)
+                        .ingredientText(ingredientText)
+                        .optional(optional)
+                        .build();
             }
-            if (quantity != null) {
-                remaining = remaining.substring(qm.end()).trim();
+        }
+
+        // Case 2: "100 g dyni ABC" or "100g dyni ABC" (Quantity at start)
+        ParsedQtyUnit pqu = parseLeadingQuantityAndUnit(remaining);
+        quantity = pqu.quantity;
+        unitText = pqu.unitText;
+        ingredientText = capitalizeFirst(pqu.remainingText);
+
+        String formattedOriginal = formatOriginalText(ingredientText, quantity, unitText, text);
+        return ScrapedRecipeData.ScrapedIngredientLine.builder()
+                .originalText(formattedOriginal)
+                .quantity(quantity)
+                .unitText(unitText)
+                .ingredientText(ingredientText)
+                .optional(optional)
+                .build();
+    }
+
+    private ParsedQtyUnit parseLeadingQuantityAndUnit(String input) {
+        String remaining = input.trim();
+        Double quantity = null;
+        String unitText = null;
+
+        String lower = remaining.toLowerCase();
+        if (lower.startsWith("półtorej ") || lower.startsWith("półtora ")) {
+            quantity = 1.5;
+            remaining = remaining.substring(remaining.indexOf(' ') + 1).trim();
+        } else if (lower.startsWith("pół ")) {
+            quantity = 0.5;
+            remaining = remaining.substring(4).trim();
+        } else if (lower.startsWith("ćwierć ")) {
+            quantity = 0.25;
+            remaining = remaining.substring(7).trim();
+        } else {
+            Matcher qm = QUANTITY_PATTERN.matcher(remaining);
+            if (qm.find()) {
+                quantity = parseQuantityValue(qm.group(1));
+                if (quantity != null) {
+                    remaining = remaining.substring(qm.end()).trim();
+                }
             }
         }
 
@@ -352,14 +487,47 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
             }
         }
 
-        ingredientText = remaining;
+        return new ParsedQtyUnit(quantity, unitText, remaining);
+    }
 
-        return new ScrapedRecipeData.ScrapedIngredientLine(
-                text,
-                quantity,
-                unitText,
-                ingredientText,
-                null
-        );
+    private Double parseQuantityValue(String raw) {
+        if (raw == null) return null;
+        String qStr = raw.replace(",", ".").replaceAll("\\s+", "");
+        if (qStr.contains("-") || qStr.contains("–")) {
+            qStr = qStr.split("[-–]")[0].trim();
+        }
+        if (qStr.contains("/")) {
+            String[] parts = qStr.split("/");
+            try {
+                return Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        try {
+            return Double.parseDouble(qStr);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String formatOriginalText(String ingredientText, Double quantity, String unitText, String fallback) {
+        if (ingredientText != null && !ingredientText.isBlank() && quantity != null) {
+            String qtyStr = quantity == Math.floor(quantity)
+                    ? String.valueOf(quantity.intValue())
+                    : String.valueOf(quantity);
+            String unitStr = (unitText != null && !unitText.isBlank()) ? " " + unitText : "";
+            return ingredientText + " - " + qtyStr + unitStr;
+        }
+        return fallback;
+    }
+
+    private String capitalizeFirst(String text) {
+        if (text == null || text.isBlank()) return text;
+        String trimmed = text.trim();
+        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
+    }
+
+    private record ParsedQtyUnit(Double quantity, String unitText, String remainingText) {
     }
 }

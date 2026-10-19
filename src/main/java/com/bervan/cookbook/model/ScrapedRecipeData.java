@@ -28,6 +28,7 @@ public class ScrapedRecipeData {
     private List<ScrapedIngredientLine> ingredientLines;
 
     @Data
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ScrapedIngredientLine {
@@ -36,5 +37,16 @@ public class ScrapedRecipeData {
         private String unitText;
         private String ingredientText;
         private String category;
+        private String ingredientCategory;
+        private Boolean optional;
+
+        public ScrapedIngredientLine(String originalText, Double quantity, String unitText, String ingredientText, String category) {
+            this.originalText = originalText;
+            this.quantity = quantity;
+            this.unitText = unitText;
+            this.ingredientText = ingredientText;
+            this.category = category;
+            this.optional = false;
+        }
     }
 }

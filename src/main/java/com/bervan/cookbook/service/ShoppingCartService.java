@@ -34,13 +34,14 @@ public class ShoppingCartService extends BaseService<UUID, ShoppingCart> {
         for (RecipeIngredient ri : recipe.getRecipeIngredients()) {
             if (Boolean.TRUE.equals(ri.isDeleted())) continue;
 
-            double qty = ri.getQuantity() != null ? ri.getQuantity() * servingMultiplier : 0;
+            double qty = ri.getQuantity() != null ? Math.round(ri.getQuantity() * servingMultiplier * 100.0) / 100.0 : 0;
             CulinaryUnit unit = ri.getUnit() != null ? ri.getUnit() : CulinaryUnit.PIECE;
 
             // Try to aggregate with existing item
             Optional<ShoppingCartItem> existing = cart.getItems().stream()
                     .filter(item -> !Boolean.TRUE.equals(item.isDeleted()))
-                    .filter(item -> item.getIngredient().getId().equals(ri.getIngredient().getId()))
+                    .filter(item -> item.getIngredient() != null && ri.getIngredient() != null
+                            && item.getIngredient().getId().equals(ri.getIngredient().getId()))
                     .filter(item -> item.getUnit() != null && conversionEngine.areCompatible(item.getUnit(), unit))
                     .findFirst();
 
@@ -48,7 +49,8 @@ public class ShoppingCartService extends BaseService<UUID, ShoppingCart> {
                 ShoppingCartItem item = existing.get();
                 Double converted = conversionEngine.convert(qty, unit, item.getUnit());
                 if (converted != null) {
-                    item.setQuantity((item.getQuantity() != null ? item.getQuantity() : 0) + converted);
+                    double updatedQty = (item.getQuantity() != null ? item.getQuantity() : 0) + converted;
+                    item.setQuantity(Math.round(updatedQty * 100.0) / 100.0);
                 }
             } else {
                 ShoppingCartItem newItem = new ShoppingCartItem();
