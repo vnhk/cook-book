@@ -20,6 +20,7 @@ public class HistoryRecipe extends BervanHistoryOwnedEntity<UUID> implements Per
     private UUID id;
     private LocalDateTime updateDate;
 
+    @Size(max = 300)
     @HistoryField
     private String name;
 
@@ -52,9 +53,11 @@ public class HistoryRecipe extends BervanHistoryOwnedEntity<UUID> implements Per
 
     private String tags;
 
+    @Size(max = 500)
     @HistoryField
     private String requiredEquipment;
 
+    @Size(max = 1000)
     @HistoryField
     private String mainImageUrl;
 

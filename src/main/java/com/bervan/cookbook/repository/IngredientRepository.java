@@ -10,5 +10,7 @@ import java.util.UUID;
 public interface IngredientRepository extends BaseRepository<Ingredient, UUID> {
     Optional<Ingredient> findByNameIgnoreCase(String name);
 
+    List<Ingredient> findAllByNameIgnoreCase(String name);
+
     List<Ingredient> findByNameContainingIgnoreCase(String name);
 }

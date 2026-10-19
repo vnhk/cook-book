@@ -45,17 +45,22 @@ public class IngredientNormalizationEngine {
         String cleaned = inputText.trim().toLowerCase();
 
         // 1. Exact match on name
-        Optional<Ingredient> byName = ingredientRepository.findByNameIgnoreCase(cleaned);
-        if (byName.isPresent() && !Boolean.TRUE.equals(byName.get().isDeleted())) {
+        Optional<Ingredient> byName = ingredientRepository.findAllByNameIgnoreCase(cleaned).stream()
+                .filter(i -> i != null && !Boolean.TRUE.equals(i.isDeleted()))
+                .findFirst();
+        if (byName.isPresent()) {
             return byName;
         }
 
         // 2. Exact match on alias
-        Optional<IngredientAlias> byAlias = aliasRepository.findByAliasNameIgnoreCase(cleaned);
-        if (byAlias.isPresent() && !Boolean.TRUE.equals(byAlias.get().isDeleted())
-                && byAlias.get().getIngredient() != null
-                && !Boolean.TRUE.equals(byAlias.get().getIngredient().isDeleted())) {
-            return Optional.of(byAlias.get().getIngredient());
+        Optional<Ingredient> byAlias = aliasRepository.findAllByAliasNameIgnoreCase(cleaned).stream()
+                .filter(a -> a != null && !Boolean.TRUE.equals(a.isDeleted())
+                        && a.getIngredient() != null
+                        && !Boolean.TRUE.equals(a.getIngredient().isDeleted()))
+                .map(IngredientAlias::getIngredient)
+                .findFirst();
+        if (byAlias.isPresent()) {
+            return byAlias;
         }
 
         // 3. Fuzzy matching

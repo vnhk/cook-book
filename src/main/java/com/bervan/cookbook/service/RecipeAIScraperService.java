@@ -4,23 +4,31 @@ import com.bervan.common.service.OpenAIService;
 import com.bervan.cookbook.model.Ingredient;
 import com.bervan.cookbook.model.ScrapedRecipeData;
 import com.bervan.cookbook.repository.IngredientRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.bervan.logging.JsonLogger;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.jsoup.safety.Safelist;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class RecipeAIScraperService {
-    private static final Logger log = LoggerFactory.getLogger(RecipeAIScraperService.class);
+    private static final JsonLogger log = JsonLogger.getLogger(RecipeAIScraperService.class, "cook-book");
+
+    private static final Safelist PROMPT_HTML_SAFELIST = Safelist.basic()
+            .addTags("h1", "h2", "h3", "h4", "section", "article", "div");
+
+    private static final Pattern NUMBER_EXTRACTOR = Pattern.compile("(\\d+[.,]?\\d*)");
 
     private static final String AI_INSTRUCTION_SYSTEM_PROMPT =
             "Jesteś doświadczonym redaktorem kulinarnym specjalizującym się w tworzeniu krótkich, " +
@@ -69,6 +77,8 @@ public class RecipeAIScraperService {
                 ingredientsSummary.append("\n");
             }
         }
+
+        String promptInstructionHtml = prepareHtmlForAiPrompt(rawInstructionHtml);
 
         String prompt = """
                 Wymagania: Edytuj załączony kod HTML zawierający przygotowanie przepisu kulinarnego. Załączona jest również pełna treść przepisu wraz z listą składników, która ma służyć jako źródło informacji.
@@ -155,17 +165,20 @@ public class RecipeAIScraperService {
 
                 --- ZAŁĄCZONY HTML PRZYGOTOWANIA DO EDYCJI ---
                 %s
-                """.formatted(ingredientsSummary.toString(), fullRecipeContext, rawInstructionHtml);
+                """.formatted(ingredientsSummary.toString(), fullRecipeContext, promptInstructionHtml);
 
         try {
-            log.info("Sending recipe instructions to OpenAI for summarization...");
+            log.info("Sending recipe instructions to OpenAI for summarization (promptLength={})...", prompt.length());
             String aiResponse = instructionAIService.askAI(prompt, OpenAIService.GPT_4O_MINI, 0.1, apiKey);
             if (aiResponse != null && !aiResponse.isBlank()) {
                 String cleaned = stripMarkdownCodeBlock(aiResponse);
+                log.info("Received summarized recipe instructions from OpenAI (length={})", cleaned.length());
                 return Jsoup.clean(cleaned, baseUri != null ? baseUri : "", safelist);
+            } else {
+                log.warn("OpenAI returned empty response for instruction summarization, falling back to raw HTML");
             }
         } catch (Exception e) {
-            log.error("Failed to summarize recipe instructions with OpenAI, falling back to raw HTML", e);
+            log.error("Failed to summarize recipe instructions with OpenAI: " + e.getMessage(), e);
         }
         return rawInstructionHtml;
     }
@@ -188,6 +201,8 @@ public class RecipeAIScraperService {
         String fallbackSummary = fallbackLines == null ? "" : fallbackLines.stream()
                 .map(ScrapedRecipeData.ScrapedIngredientLine::getOriginalText)
                 .collect(Collectors.joining("\n- ", "- ", ""));
+
+        String cleanIngredientsHtml = prepareHtmlForAiPrompt(rawIngredientsHtml);
 
         String prompt = """
                 Wyciągnij wszystkie składniki z załączonego fragmentu HTML przepisu kulinarnego i ujednolić (zunifikuj) je tak, aby działało wyszukiwanie po składnikach/tagach oraz sumowanie w koszyku zakupowym (Shopping Cart).
@@ -238,25 +253,99 @@ public class RecipeAIScraperService {
 
                 --- HTML SEKCJI SKŁADNIKÓW ---
                 %s
-                """.formatted(existingDbIngredients, fallbackSummary, rawIngredientsHtml != null ? rawIngredientsHtml : "");
+                """.formatted(existingDbIngredients, fallbackSummary, cleanIngredientsHtml);
 
         try {
-            log.info("Sending recipe ingredients to OpenAI for extraction and unification...");
+            log.info("Sending recipe ingredients to OpenAI for extraction and unification (promptLength={})...", prompt.length());
             String aiResponse = ingredientAIService.askAI(prompt, OpenAIService.GPT_4O_MINI, 0.1, apiKey);
             if (aiResponse != null && !aiResponse.isBlank()) {
                 String cleanedJson = stripMarkdownCodeBlock(aiResponse);
-                List<ScrapedRecipeData.ScrapedIngredientLine> aiLines = objectMapper.readValue(
-                        cleanedJson,
-                        new TypeReference<List<ScrapedRecipeData.ScrapedIngredientLine>>() {}
-                );
-                if (aiLines != null && !aiLines.isEmpty()) {
+                List<ScrapedRecipeData.ScrapedIngredientLine> aiLines = parseIngredientLinesJson(cleanedJson);
+                if (!aiLines.isEmpty()) {
+                    log.info("Successfully unified {} ingredients via OpenAI", aiLines.size());
                     return aiLines;
                 }
+            } else {
+                log.warn("OpenAI returned empty response for ingredient unification, falling back to local parser");
             }
         } catch (Exception e) {
-            log.error("Failed to unify ingredients with OpenAI, falling back to local parser", e);
+            log.error("Failed to unify ingredients with OpenAI, falling back to local parser: " + e.getMessage(), e);
         }
         return fallbackLines;
+    }
+
+    private List<ScrapedRecipeData.ScrapedIngredientLine> parseIngredientLinesJson(String json) throws Exception {
+        JsonNode root = objectMapper.readTree(json);
+        JsonNode arrayNode = root;
+        if (root.isObject()) {
+            for (JsonNode child : root) {
+                if (child.isArray()) {
+                    arrayNode = child;
+                    break;
+                }
+            }
+        }
+        List<ScrapedRecipeData.ScrapedIngredientLine> result = new ArrayList<>();
+        if (arrayNode != null && arrayNode.isArray()) {
+            for (JsonNode node : arrayNode) {
+                String ingredientText = textOrNull(node, "ingredientText");
+                if (ingredientText == null || ingredientText.isBlank()) {
+                    continue;
+                }
+                Double quantity = parseDoubleNode(node.get("quantity"));
+                String unitText = textOrNull(node, "unitText");
+                String originalText = textOrNull(node, "originalText");
+                String category = textOrNull(node, "category");
+                String ingredientCategory = textOrNull(node, "ingredientCategory");
+                Boolean optional = node.hasNonNull("optional") && node.get("optional").asBoolean(false);
+
+                result.add(ScrapedRecipeData.ScrapedIngredientLine.builder()
+                        .originalText(originalText != null ? originalText : ingredientText)
+                        .quantity(quantity)
+                        .unitText(unitText)
+                        .ingredientText(ingredientText)
+                        .category(category)
+                        .ingredientCategory(ingredientCategory)
+                        .optional(optional)
+                        .build());
+            }
+        }
+        return result;
+    }
+
+    private String textOrNull(JsonNode node, String field) {
+        if (node == null || !node.hasNonNull(field)) {
+            return null;
+        }
+        String val = node.get(field).asText(null);
+        return (val == null || val.isBlank() || "null".equalsIgnoreCase(val.trim())) ? null : val.trim();
+    }
+
+    private Double parseDoubleNode(JsonNode qNode) {
+        if (qNode == null || qNode.isNull()) {
+            return null;
+        }
+        if (qNode.isNumber()) {
+            return qNode.asDouble();
+        }
+        String text = qNode.asText("");
+        Matcher m = NUMBER_EXTRACTOR.matcher(text);
+        if (m.find()) {
+            try {
+                return Double.parseDouble(m.group(1).replace(",", "."));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private String prepareHtmlForAiPrompt(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        Document doc = Jsoup.parseBodyFragment(html);
+        doc.select("img, picture, figure, svg, noscript, script, style, iframe").remove();
+        return Jsoup.clean(doc.body().html(), PROMPT_HTML_SAFELIST);
     }
 
     private String loadExistingIngredientNames() {
@@ -272,7 +361,7 @@ public class RecipeAIScraperService {
                     .collect(Collectors.toList());
             return String.join(", ", names);
         } catch (Exception e) {
-            log.warn("Could not load existing ingredients for AI prompt context", e);
+            log.warn("Could not load existing ingredients for AI prompt context: " + e.getMessage());
             return "";
         }
     }

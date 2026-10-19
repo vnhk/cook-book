@@ -35,17 +35,25 @@ public class IngredientService extends BaseService<UUID, Ingredient> {
     }
 
     public Ingredient findOrCreateByName(String name, String category) {
-        String trimmed = name.trim();
-        Optional<Ingredient> existing = ingredientRepository.findByNameIgnoreCase(trimmed);
-        if (existing.isPresent() && !Boolean.TRUE.equals(existing.get().isDeleted())) {
+        String trimmed = name == null ? "" : name.trim();
+        if (trimmed.length() > 200) {
+            trimmed = trimmed.substring(0, 200).trim();
+        }
+        Optional<Ingredient> existing = ingredientRepository.findAllByNameIgnoreCase(trimmed).stream()
+                .filter(i -> i != null && !Boolean.TRUE.equals(i.isDeleted()))
+                .findFirst();
+        if (existing.isPresent()) {
             return existing.get();
         }
 
-        Optional<IngredientAlias> alias = aliasRepository.findByAliasNameIgnoreCase(trimmed);
-        if (alias.isPresent() && !Boolean.TRUE.equals(alias.get().isDeleted())
-                && alias.get().getIngredient() != null
-                && !Boolean.TRUE.equals(alias.get().getIngredient().isDeleted())) {
-            return alias.get().getIngredient();
+        Optional<Ingredient> aliasMatch = aliasRepository.findAllByAliasNameIgnoreCase(trimmed).stream()
+                .filter(a -> a != null && !Boolean.TRUE.equals(a.isDeleted())
+                        && a.getIngredient() != null
+                        && !Boolean.TRUE.equals(a.getIngredient().isDeleted()))
+                .map(IngredientAlias::getIngredient)
+                .findFirst();
+        if (aliasMatch.isPresent()) {
+            return aliasMatch.get();
         }
 
         Ingredient ingredient = new Ingredient();

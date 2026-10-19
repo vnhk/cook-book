@@ -2,13 +2,12 @@ package com.bervan.cookbook.scraper;
 
 import com.bervan.cookbook.model.ScrapedRecipeData;
 import com.bervan.cookbook.service.RecipeAIScraperService;
+import com.bervan.logging.JsonLogger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.safety.Safelist;
 import org.jsoup.select.Elements;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +20,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class AGRecipeScraper implements RecipeScraperStrategy {
-    private static final Logger log = LoggerFactory.getLogger(AGRecipeScraper.class);
+    private static final JsonLogger log = JsonLogger.getLogger(AGRecipeScraper.class, "cook-book");
 
     private static final Pattern QUANTITY_PATTERN = Pattern.compile(
             "^\\s*(\\d+[.,]?\\d*(?:\\s*[-–/]\\s*\\d+[.,]?\\d*)?)\\s*"

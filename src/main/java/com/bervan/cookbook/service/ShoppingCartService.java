@@ -61,7 +61,7 @@ public class ShoppingCartService extends BaseService<UUID, ShoppingCart> {
                 newItem.setUnit(unit);
                 newItem.setPurchased(false);
                 newItem.setSourceRecipe(recipe);
-                newItem.getOwners().addAll(cart.getOwners());
+                cart.getOwners().forEach(newItem::addOwner);
                 cart.getItems().add(newItem);
             }
         }

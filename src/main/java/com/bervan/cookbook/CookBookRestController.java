@@ -3,6 +3,7 @@ package com.bervan.cookbook;
 import com.bervan.common.search.SearchRequest;
 import com.bervan.cookbook.model.*;
 import com.bervan.cookbook.service.*;
+import com.bervan.logging.JsonLogger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/cook-book")
 public class CookBookRestController {
+    private static final JsonLogger log = JsonLogger.getLogger(CookBookRestController.class, "cook-book");
 
     private final RecipeService recipeService;
     private final IngredientService ingredientService;
@@ -219,7 +221,7 @@ public class CookBookRestController {
             ri.setOriginalText((String) req.get("originalText"));
             ri.setModificationDate(LocalDateTime.now());
             ri.setDeleted(false);
-            ri.getOwners().addAll(recipe.getOwners());
+            recipe.getOwners().forEach(ri::addOwner);
 
             recipe.getRecipeIngredients().add(ri);
             recipeService.save(recipe);
@@ -238,12 +240,20 @@ public class CookBookRestController {
 
     @PostMapping("/recipes/import-html")
     public ResponseEntity<RecipeDto> importHtml(@RequestBody Map<String, Object> req) {
+        String scraperName = req != null ? (String) req.get("scraperName") : null;
         try {
-            String scraperName = (String) req.get("scraperName");
-            String html = (String) req.get("html");
-            Recipe imported = importService.importFromScraped(importService.scrapePreview(scraperName, html));
+            String html = req != null ? (String) req.get("html") : null;
+            if (html == null || html.isBlank()) {
+                log.warn("Recipe HTML import rejected: empty HTML payload for scraper {}", scraperName);
+                return ResponseEntity.badRequest().build();
+            }
+            log.info("Starting recipe import from HTML using scraper: {}, htmlLength: {}", scraperName, html.length());
+            ScrapedRecipeData scraped = importService.scrapePreview(scraperName, html);
+            Recipe imported = importService.importFromScraped(scraped);
+            log.info("Successfully imported recipe '{}' (id={})", imported.getName(), imported.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(toRecipeDto(imported));
         } catch (Exception e) {
+            log.error("Failed to import recipe from HTML (scraper=" + scraperName + "): " + e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }

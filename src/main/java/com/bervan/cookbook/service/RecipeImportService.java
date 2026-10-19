@@ -2,14 +2,18 @@ package com.bervan.cookbook.service;
 
 import com.bervan.cookbook.model.*;
 import com.bervan.cookbook.scraper.RecipeScraperStrategy;
+import com.bervan.logging.JsonLogger;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class RecipeImportService {
+    private static final JsonLogger log = JsonLogger.getLogger(RecipeImportService.class, "cook-book");
+
     private final List<RecipeScraperStrategy> scraperStrategies;
     private final IngredientNormalizationEngine normalizationEngine;
     private final UnitConversionEngine unitConversionEngine;
@@ -49,13 +53,17 @@ public class RecipeImportService {
     public Recipe importFromScraped(ScrapedRecipeData data) {
         Recipe recipe = new Recipe();
         recipe.setId(UUID.randomUUID());
-        recipe.setName(data.getName());
+        String rawName = data.getName() != null && data.getName().trim().length() >= 2
+                ? data.getName().trim()
+                : "Imported Recipe";
+        recipe.setName(truncate(rawName, 300));
         recipe.setDescription(data.getDescription());
         recipe.setDeleted(false);
+        recipe.setModificationDate(LocalDateTime.now());
 
-        // Sanitize HTML instruction - allow images and basic formatting
+        // Sanitize HTML instruction - allow images, h4 headers, and basic formatting
         if (data.getInstructionHtml() != null) {
-            Safelist safelist = Safelist.relaxed().addTags("img")
+            Safelist safelist = Safelist.relaxed().addTags("img", "h4")
                     .addAttributes("img", "src", "alt", "width", "height");
             recipe.setInstruction(Jsoup.clean(data.getInstructionHtml(), safelist));
         }
@@ -66,15 +74,16 @@ public class RecipeImportService {
         recipe.setTotalCalories(data.getTotalCalories());
         recipe.setAverageRating(data.getAverageRating());
         recipe.setRatingCount(data.getRatingCount());
-        recipe.setRequiredEquipment(data.getRequiredEquipment());
-        recipe.setSourceUrl(data.getSourceUrl());
-        recipe.setMainImageUrl(data.getMainImageUrl());
+        recipe.setRequiredEquipment(truncate(data.getRequiredEquipment(), 500));
+        recipe.setSourceUrl(truncate(data.getSourceUrl(), 300));
+        recipe.setMainImageUrl(truncate(data.getMainImageUrl(), 1000));
 
         Map<String, String> unifiedTags = new LinkedHashMap<>();
         if (data.getTags() != null && !data.getTags().isBlank()) {
             Arrays.stream(data.getTags().split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
+                    .map(s -> truncate(s, 250))
                     .forEach(t -> unifiedTags.putIfAbsent(t.toLowerCase(), t));
         }
 
@@ -82,41 +91,54 @@ public class RecipeImportService {
 
         if (data.getIngredientLines() != null) {
             for (ScrapedRecipeData.ScrapedIngredientLine line : data.getIngredientLines()) {
+                if (line == null) {
+                    continue;
+                }
                 String ingredientText = line.getIngredientText();
                 if (ingredientText == null || ingredientText.isBlank()) {
                     continue;
                 }
 
-                Ingredient ingredient = normalizationEngine.normalize(ingredientText)
-                        .orElseGet(() -> ingredientService.findOrCreateByName(
-                                ingredientText, line.getIngredientCategory()));
+                try {
+                    Ingredient ingredient = normalizationEngine.normalize(ingredientText)
+                            .orElseGet(() -> ingredientService.findOrCreateByName(
+                                    ingredientText, line.getIngredientCategory()));
 
-                CulinaryUnit unit = unitConversionEngine.parseUnit(line.getUnitText());
+                    CulinaryUnit unit = unitConversionEngine.parseUnit(line.getUnitText());
 
-                RecipeIngredient ri = new RecipeIngredient();
-                ri.setId(UUID.randomUUID());
-                ri.setRecipe(recipe);
-                ri.setIngredient(ingredient);
-                ri.setQuantity(line.getQuantity());
-                ri.setUnit(unit);
-                ri.setOptional(Boolean.TRUE.equals(line.getOptional()));
-                ri.setCategory(line.getCategory());
-                ri.setOriginalText(formatUnifiedIngredientLine(ingredient.getName(), line.getQuantity(), unit, line.getOriginalText()));
-                ri.setDeleted(false);
+                    RecipeIngredient ri = new RecipeIngredient();
+                    ri.setId(UUID.randomUUID());
+                    ri.setRecipe(recipe);
+                    ri.setIngredient(ingredient);
+                    ri.setQuantity(line.getQuantity());
+                    ri.setUnit(unit);
+                    ri.setOptional(Boolean.TRUE.equals(line.getOptional()));
+                    ri.setCategory(truncate(line.getCategory(), 100));
+                    ri.setOriginalText(truncate(
+                            formatUnifiedIngredientLine(ingredient.getName(), line.getQuantity(), unit, line.getOriginalText()),
+                            300));
+                    ri.setModificationDate(LocalDateTime.now());
+                    ri.setDeleted(false);
+                    recipe.getOwners().forEach(ri::addOwner);
 
-                recipeIngredients.add(ri);
+                    recipeIngredients.add(ri);
 
-                if (!Boolean.TRUE.equals(ri.getOptional()) && ingredient.getName() != null) {
-                    String ingTag = ingredient.getName().trim();
-                    if (!ingTag.isEmpty()) {
-                        unifiedTags.putIfAbsent(ingTag.toLowerCase(), ingTag);
+                    if (!Boolean.TRUE.equals(ri.getOptional()) && ingredient.getName() != null) {
+                        String ingTag = truncate(ingredient.getName().trim(), 250);
+                        if (!ingTag.isEmpty()) {
+                            unifiedTags.putIfAbsent(ingTag.toLowerCase(), ingTag);
+                        }
                     }
+                } catch (Exception e) {
+                    log.error("Failed to process scraped ingredient line '" + ingredientText + "': " + e.getMessage(), e);
                 }
             }
         }
 
         recipe.setTags(new ArrayList<>(unifiedTags.values()));
         recipe.setRecipeIngredients(recipeIngredients);
+        log.info("Saving imported recipe '{}' with {} ingredients and {} tags",
+                recipe.getName(), recipeIngredients.size(), recipe.getTags().size());
         return recipeService.save(recipe);
     }
 
@@ -133,5 +155,13 @@ public class RecipeImportService {
             return (canonicalName + " - " + qtyStr + (unitStr.isEmpty() ? "" : " " + unitStr)).trim();
         }
         return canonicalName;
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 }
