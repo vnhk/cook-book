@@ -114,6 +114,7 @@ public class RecipeImportService {
                     ri.setUnit(unit);
                     ri.setOptional(Boolean.TRUE.equals(line.getOptional()));
                     ri.setCategory(truncate(line.getCategory(), 100));
+                    ri.setVariableName(truncate(line.getVariableName(), 100));
                     ri.setOriginalText(truncate(
                             formatUnifiedIngredientLine(ingredient.getName(), line.getQuantity(), unit, line.getOriginalText()),
                             300));

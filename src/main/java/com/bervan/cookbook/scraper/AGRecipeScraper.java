@@ -22,24 +22,6 @@ import java.util.regex.Pattern;
 public class AGRecipeScraper implements RecipeScraperStrategy {
     private static final JsonLogger log = JsonLogger.getLogger(AGRecipeScraper.class, "cook-book");
 
-    private static final Pattern QUANTITY_PATTERN = Pattern.compile(
-            "^\\s*(\\d+[.,]?\\d*(?:\\s*[-–/]\\s*\\d+[.,]?\\d*)?)\\s*"
-    );
-
-    private static final Pattern TRAILING_METRIC_PATTERN = Pattern.compile(
-            "(?:ok\\.?\\s*|około\\s*)?(\\d+[.,]?\\d*)\\s*(g|kg|dag|dkg|ml|l)\\b",
-            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
-    );
-
-    private static final Pattern UNIT_PATTERN = Pattern.compile(
-            "^(g|kg|dag|dkg|ml|l|szt\\.?|sztuk[aiy]?|łyżeczk[aiy]?|łyżk[aiy]?|" +
-                    "łyżeczek|łyżek|szklan(?:ka|ki|ek)|szczyp(?:ta|ty|t)|" +
-                    "pęcz(?:ek|ki|ków)|ząb(?:ek|ki|ków)|plaster(?:ek|ki|ków)|" +
-                    "garś(?:ć|cie|ci)|opakowa(?:nie|nia|ń)|" +
-                    "lyzeczk[aiy]?|lyzk[aiy]?|peczk[aiy]?|zabk[aiy]?|garsc[ie]?)\\b\\s*",
-            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
-    );
-
     private static final Safelist INSTRUCTION_SAFELIST = Safelist.relaxed()
             .addTags("img", "h4", "section", "article")
             .addAttributes("img", "src", "srcset", "alt", "title", "width", "height", "loading", "sizes", "class")
@@ -57,14 +39,17 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
                     "nav", "header", "footer", "iframe", "ins");
 
     private final RecipeAIScraperService aiScraperService;
+    private final RecipeIngredientTextParser textParser;
 
     public AGRecipeScraper() {
         this.aiScraperService = null;
+        this.textParser = new RecipeIngredientTextParser();
     }
 
     @Autowired
-    public AGRecipeScraper(RecipeAIScraperService aiScraperService) {
+    public AGRecipeScraper(RecipeAIScraperService aiScraperService, RecipeIngredientTextParser textParser) {
         this.aiScraperService = aiScraperService;
+        this.textParser = textParser != null ? textParser : new RecipeIngredientTextParser();
     }
 
     @Override
@@ -367,6 +352,9 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         if (ingredients.isEmpty()) {
             ingredients = root.select(".recipe-ing-list li");
         }
+        if (ingredients.isEmpty()) {
+            ingredients = root.select(".field-name-field-skladniki li, .recipe-ingredients li, .ingredients-list li, [class*='skladnik'] li");
+        }
 
         for (Element ing : ingredients) {
             Element nameSpan = ing.selectFirst(".ingredient, .ing-name, .name");
@@ -381,7 +369,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
             if (text.isEmpty()) continue;
 
             String sectionCategory = findSectionCategory(ing);
-            ScrapedRecipeData.ScrapedIngredientLine line = parseIngredientLine(text);
+            ScrapedRecipeData.ScrapedIngredientLine line = textParser.parseIngredientLine(text);
             if (sectionCategory != null && line.getCategory() == null) {
                 line.setCategory(sectionCategory);
             }
@@ -402,131 +390,7 @@ public class AGRecipeScraper implements RecipeScraperStrategy {
         return null;
     }
 
-    ScrapedRecipeData.ScrapedIngredientLine parseIngredientLine(String text) {
-        String remaining = text.trim();
-        Double quantity = null;
-        String unitText = null;
-        String ingredientText;
-        boolean optional = remaining.toLowerCase().contains("opcjonalnie");
-
-        // Case 1: "Nazwa składnika - 100 g" or "Nazwa składnika - 2 szklanki - 320 g" (AniaGotuje format)
-        if (remaining.contains(" - ") || remaining.contains(" – ")) {
-            String[] parts = remaining.split("\\s+[-–]\\s+", 2);
-            String firstPart = parts[0].trim();
-            String secondPart = parts[1].trim();
-
-            if (!QUANTITY_PATTERN.matcher(firstPart).find()) {
-                ingredientText = capitalizeFirst(firstPart);
-                Matcher metricMatcher = TRAILING_METRIC_PATTERN.matcher(secondPart);
-                if (metricMatcher.find()) {
-                    quantity = parseQuantityValue(metricMatcher.group(1));
-                    unitText = metricMatcher.group(2).trim();
-                } else {
-                    ParsedQtyUnit pqu = parseLeadingQuantityAndUnit(secondPart);
-                    quantity = pqu.quantity;
-                    unitText = pqu.unitText;
-                }
-                String formattedOriginal = formatOriginalText(ingredientText, quantity, unitText, text);
-                return ScrapedRecipeData.ScrapedIngredientLine.builder()
-                        .originalText(formattedOriginal)
-                        .quantity(quantity)
-                        .unitText(unitText)
-                        .ingredientText(ingredientText)
-                        .optional(optional)
-                        .build();
-            }
-        }
-
-        // Case 2: "100 g dyni ABC" or "100g dyni ABC" (Quantity at start)
-        ParsedQtyUnit pqu = parseLeadingQuantityAndUnit(remaining);
-        quantity = pqu.quantity;
-        unitText = pqu.unitText;
-        ingredientText = capitalizeFirst(pqu.remainingText);
-
-        String formattedOriginal = formatOriginalText(ingredientText, quantity, unitText, text);
-        return ScrapedRecipeData.ScrapedIngredientLine.builder()
-                .originalText(formattedOriginal)
-                .quantity(quantity)
-                .unitText(unitText)
-                .ingredientText(ingredientText)
-                .optional(optional)
-                .build();
-    }
-
-    private ParsedQtyUnit parseLeadingQuantityAndUnit(String input) {
-        String remaining = input.trim();
-        Double quantity = null;
-        String unitText = null;
-
-        String lower = remaining.toLowerCase();
-        if (lower.startsWith("półtorej ") || lower.startsWith("półtora ")) {
-            quantity = 1.5;
-            remaining = remaining.substring(remaining.indexOf(' ') + 1).trim();
-        } else if (lower.startsWith("pół ")) {
-            quantity = 0.5;
-            remaining = remaining.substring(4).trim();
-        } else if (lower.startsWith("ćwierć ")) {
-            quantity = 0.25;
-            remaining = remaining.substring(7).trim();
-        } else {
-            Matcher qm = QUANTITY_PATTERN.matcher(remaining);
-            if (qm.find()) {
-                quantity = parseQuantityValue(qm.group(1));
-                if (quantity != null) {
-                    remaining = remaining.substring(qm.end()).trim();
-                }
-            }
-        }
-
-        if (quantity != null) {
-            Matcher um = UNIT_PATTERN.matcher(remaining);
-            if (um.find()) {
-                unitText = um.group(1).trim();
-                remaining = remaining.substring(um.end()).trim();
-            }
-        }
-
-        return new ParsedQtyUnit(quantity, unitText, remaining);
-    }
-
-    private Double parseQuantityValue(String raw) {
-        if (raw == null) return null;
-        String qStr = raw.replace(",", ".").replaceAll("\\s+", "");
-        if (qStr.contains("-") || qStr.contains("–")) {
-            qStr = qStr.split("[-–]")[0].trim();
-        }
-        if (qStr.contains("/")) {
-            String[] parts = qStr.split("/");
-            try {
-                return Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        try {
-            return Double.parseDouble(qStr);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private String formatOriginalText(String ingredientText, Double quantity, String unitText, String fallback) {
-        if (ingredientText != null && !ingredientText.isBlank() && quantity != null) {
-            String qtyStr = quantity == Math.floor(quantity)
-                    ? String.valueOf(quantity.intValue())
-                    : String.valueOf(quantity);
-            String unitStr = (unitText != null && !unitText.isBlank()) ? " " + unitText : "";
-            return ingredientText + " - " + qtyStr + unitStr;
-        }
-        return fallback;
-    }
-
-    private String capitalizeFirst(String text) {
-        if (text == null || text.isBlank()) return text;
-        String trimmed = text.trim();
-        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
-    }
-
-    private record ParsedQtyUnit(Double quantity, String unitText, String remainingText) {
+    public ScrapedRecipeData.ScrapedIngredientLine parseIngredientLine(String text) {
+        return textParser.parseIngredientLine(text);
     }
 }

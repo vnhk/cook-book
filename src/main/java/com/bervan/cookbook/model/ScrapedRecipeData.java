@@ -39,6 +39,7 @@ public class ScrapedRecipeData {
         private String category;
         private String ingredientCategory;
         private Boolean optional;
+        private String variableName;
 
         public ScrapedIngredientLine(String originalText, Double quantity, String unitText, String ingredientText, String category) {
             this.originalText = originalText;

@@ -47,7 +47,8 @@ public class CookBookRestController {
                 ri.getQuantity(),
                 unit != null ? unit.name() : null,
                 unit != null ? unit.getDisplayName() : null,
-                ri.getOptional(), ri.getCategory(), ri.getOriginalText()
+                ri.getOptional(), ri.getCategory(), ri.getOriginalText(),
+                ri.getVariableName()
         );
     }
 
@@ -219,6 +220,9 @@ public class CookBookRestController {
             ri.setOptional(Boolean.TRUE.equals(req.get("optional")));
             ri.setCategory((String) req.get("category"));
             ri.setOriginalText((String) req.get("originalText"));
+            if (req.containsKey("variableName") && req.get("variableName") != null) {
+                ri.setVariableName(((String) req.get("variableName")).trim());
+            }
             ri.setModificationDate(LocalDateTime.now());
             ri.setDeleted(false);
             recipe.getOwners().forEach(ri::addOwner);
@@ -226,6 +230,42 @@ public class CookBookRestController {
             recipe.getRecipeIngredients().add(ri);
             recipeService.save(recipe);
             return ResponseEntity.status(HttpStatus.CREATED).body(toRiDto(ri));
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/recipes/{id}/ingredients/{riId}")
+    public ResponseEntity<RecipeIngredientDto> updateIngredient(@PathVariable UUID id,
+                                                                @PathVariable UUID riId,
+                                                                @RequestBody Map<String, Object> req) {
+        return recipeService.loadById(id).flatMap(recipe -> {
+            Optional<RecipeIngredient> riOpt = recipe.getRecipeIngredients().stream()
+                    .filter(ri -> ri.getId().equals(riId))
+                    .findFirst();
+            if (riOpt.isEmpty()) return Optional.empty();
+            RecipeIngredient ri = riOpt.get();
+            if (req.containsKey("quantity")) {
+                ri.setQuantity(req.get("quantity") != null ? Double.parseDouble(req.get("quantity").toString()) : null);
+            }
+            if (req.containsKey("unit")) {
+                ri.setUnit(req.get("unit") != null && !((String) req.get("unit")).isBlank()
+                        ? CulinaryUnit.valueOf((String) req.get("unit")) : null);
+            }
+            if (req.containsKey("optional")) {
+                ri.setOptional(Boolean.TRUE.equals(req.get("optional")));
+            }
+            if (req.containsKey("category")) {
+                ri.setCategory((String) req.get("category"));
+            }
+            if (req.containsKey("originalText")) {
+                ri.setOriginalText((String) req.get("originalText"));
+            }
+            if (req.containsKey("variableName")) {
+                String varName = (String) req.get("variableName");
+                ri.setVariableName(varName != null ? varName.trim() : null);
+            }
+            ri.setModificationDate(LocalDateTime.now());
+            recipeService.save(recipe);
+            return Optional.of(ResponseEntity.ok(toRiDto(ri)));
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -386,7 +426,7 @@ public class CookBookRestController {
     record RecipeIngredientDto(UUID id, UUID ingredientId, String ingredientName,
                                String ingredientIcon, Double quantity, String unit,
                                String unitDisplayName, Boolean optional, String category,
-                               String originalText) {
+                               String originalText, String variableName) {
     }
 
     record RecipeDto(UUID id, String name, String description, String instruction,

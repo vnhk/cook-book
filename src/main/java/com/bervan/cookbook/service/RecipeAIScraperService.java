@@ -35,8 +35,9 @@ public class RecipeAIScraperService {
             "przejrzystych i praktycznych instrukcji gotowania w formacie HTML.";
 
     private static final String AI_INGREDIENT_SYSTEM_PROMPT =
-            "Jesteś ekspertem kulinarnym i analitykiem danych. Twoim zadaniem jest ekstrakcja i " +
-            "ujednolicenie (unifikacja) listy składników z przepisu kulinarnego do czystego formatu JSON.";
+            "Jesteś ekspertem kulinarnym i analitykiem danych. Twoim zadaniem jest dokładna ekstrakcja i " +
+            "ujednolicenie (unifikacja) listy składników z przepisu kulinarnego do czystego formatu JSON, " +
+            "ze szczególnym uwzględnieniem bezbłędnego rozbijania zbiorczych list przypraw na pojedyncze składniki.";
 
     private final String apiKey;
     private final IngredientRepository ingredientRepository;
@@ -69,23 +70,30 @@ public class RecipeAIScraperService {
 
         StringBuilder ingredientsSummary = new StringBuilder();
         if (unifiedIngredients != null && !unifiedIngredients.isEmpty()) {
-            for (ScrapedRecipeData.ScrapedIngredientLine ing : unifiedIngredients) {
-                ingredientsSummary.append("- ").append(ing.getOriginalText());
-                if (ing.getCategory() != null && !ing.getCategory().isBlank()) {
-                    ingredientsSummary.append(" [").append(ing.getCategory()).append("]");
-                }
-                ingredientsSummary.append("\n");
+            for (int i = 0; i < unifiedIngredients.size(); i++) {
+                ScrapedRecipeData.ScrapedIngredientLine ing = unifiedIngredients.get(i);
+                String varName = (ing.getVariableName() != null && !ing.getVariableName().isBlank())
+                        ? ing.getVariableName()
+                        : "ingredient" + (i + 1);
+                ing.setVariableName(varName);
+
+                ingredientsSummary.append(String.format("- {%s}: %s (oryginalnie: %s)%s\n",
+                        varName,
+                        ing.getIngredientText() != null ? ing.getIngredientText() : ing.getOriginalText(),
+                        ing.getOriginalText() != null ? ing.getOriginalText() : (ing.getQuantity() + " " + (ing.getUnitText() != null ? ing.getUnitText() : "")),
+                        ing.getCategory() != null && !ing.getCategory().isBlank() ? " [" + ing.getCategory() + "]" : ""
+                ));
             }
         }
 
         String promptInstructionHtml = prepareHtmlForAiPrompt(rawInstructionHtml);
 
         String prompt = """
-                Wymagania: Edytuj załączony kod HTML zawierający przygotowanie przepisu kulinarnego. Załączona jest również pełna treść przepisu wraz z listą składników, która ma służyć jako źródło informacji.
+                Wymagania: Edytuj załączony kod HTML zawierający przygotowanie przepisu kulinarnego. Załączona jest również pełna treść przepisu wraz ze zunifikowaną listą składników ze zmiennymi.
                 UWAGA: Generujesz WYŁĄCZNIE sekcję przygotowania przepisu (kroki przygotowania oraz ewentualne istotne wskazówki i propozycje podania na końcu). Lista składników, tytuł oraz parametry ogólne są wyświetlane osobno w aplikacji nad instrukcją, dlatego NIE umieszczaj osobnej listy składników ani tytułu dania na początku HTML.
 
                 AI ZADANIE:
-                Przerób przygotowanie przepisu na krótką, przejrzystą i praktyczną instrukcję gotowania, tak aby można było przygotować danie, wykonując proste kroki bez konieczności ciągłego sprawdzania listy składników lub czytania długiego opisu.
+                Przerób przygotowanie przepisu na krótką, przejrzystą i praktyczną instrukcję gotowania z użyciem zmiennych składników.
 
                 ZASADY EDYCJI:
 
@@ -96,25 +104,31 @@ public class RecipeAIScraperService {
                 - Zachowaj prawidłową kolejność wykonywania czynności.
                 - Pisz zwięźle, prostym i naturalnym językiem.
 
-                2. PODAWAJ PEŁNE INFORMACJE O SKŁADNIKACH W KAŻDYM KROKU
-                To najważniejsza zasada.
-                Za każdym razem, gdy w danym kroku pojawia się składnik, podaj wszystkie informacje niezbędne do jego użycia:
-                - dokładną ilość, np. 200 g;
-                - formę przygotowania, np. obrany, pokrojony w kostkę, starty lub posiekany;
-                - dodatkowe informacje istotne dla przygotowania, np. temperatura, rodzaj produktu lub sposób wcześniejszej obróbki, jeśli wynikają z przepisu.
+                2. UŻYWAJ ZMIENNYCH DLA ILOŚCI SKŁADNIKÓW W KAŻDYM KROKU
+                To najważniejsza zasada. Aplikacja posiada funkcję dynamicznego skalowania porcji (np. zmiana liczby porcji w górę lub w dół), która automatycznie przelicza wartości zmiennych w instrukcji.
+                Dlatego za każdym razem, gdy w danym kroku pojawia się składnik z listy, ZAMIAST wpisywać na sztywno liczbę i jednostkę, WSTAW ZMIENNĄ W NAWIASACH KLAMROWYCH {nazwa_zmiennej} (np. {ingredient1}, {ingredient2}).
+                Zmienna ta zastępuje samą ilość i jednostkę (w aplikacji zostanie dynamicznie wyświetlona jako np. „400 g”, a przy podwojeniu porcji jako „800 g”).
 
                 Nie pisz ogólnie:
                 „Dodaj ziemniaki do garnka”.
-                Napisz:
+                Nie pisz ze sztywną liczbą:
                 „Dodaj 400 g obranych i pokrojonych w kostkę ziemniaków”.
+                Napisz ze zmienną:
+                „Dodaj {ingredient1} obranych i pokrojonych w kostkę ziemniaków”.
 
                 Nie pisz:
                 „Dodaj czosnek i przyprawy”.
-                Napisz:
+                Nie pisz ze sztywną liczbą:
                 „Dodaj 2 ząbki drobno posiekanego czosnku i 1 płaską łyżeczkę soli”.
+                Napisz ze zmiennymi:
+                „Dodaj {ingredient2} drobno posiekanego czosnku i {ingredient3} soli”.
 
-                Każdy krok ma zawierać wszystkie informacje potrzebne do wykonania opisanej czynności bez konieczności szukania ich na liście składników.
-                Jeżeli składnik jest używany w kilku oddzielnych etapach, podaj odpowiednią ilość w każdym z tych etapów, o ile źródło pozwala ją ustalić. Nie dziel samodzielnie ilości składnika, jeśli nie wynika to z przepisu.
+                Każdy krok ma zawierać wszystkie informacje potrzebne do wykonania opisanej czynności:
+                - zmienną reprezentującą ilość i jednostkę (np. {ingredient1});
+                - zachowaj nazwę składnika w odpowiedniej formie gramatycznej po zmiennej;
+                - formę przygotowania, np. obrany, pokrojony w kostkę, starty lub posiekany;
+                - dodatkowe informacje istotne dla przygotowania, np. temperatura, rodzaj produktu lub sposób wcześniejszej obróbki.
+                Użyj dokładnie nazw zmiennych podanych w sekcji --- UJEDNOLICONA LISTA SKŁADNIKÓW ZE ZMIENNYMI ---.
 
                 3. ZACHOWAJ CZASY I PARAMETRY PRZYGOTOWANIA
                 - Podaj czas smażenia, gotowania, pieczenia lub duszenia, jeśli został określony w źródle.
@@ -124,9 +138,7 @@ public class RecipeAIScraperService {
 
                 4. NIE WYMYŚLAJ BRAKUJĄCYCH INFORMACJI
                 - Korzystaj przede wszystkim z informacji zawartych w załączonym HTML i pełnym przepisie.
-                - Nie dopisuj niepotwierdzonych ilości, czasów ani czynności.
-                - Jeśli ilość składnika jest podana orientacyjnie, zachowaj tę informację.
-                - Jeśli źródła podają sprzeczne dane, nie rozstrzygaj samodzielnie, która wartość jest prawidłowa. Wybierz najbardziej użyteczną formę przedstawienia informacji, a rozbieżność krótko zaznacz w przepisie lub w uwadze.
+                - Nie dopisuj niepotwierdzonych czynności, temperatur ani czasów.
                 - Nie pomijaj ważnych informacji tylko dlatego, że trudno je skrócić.
 
                 5. ZACHOWAJ NAJWAŻNIEJSZE ELEMENTY PRZYGOTOWANIA
@@ -138,9 +150,8 @@ public class RecipeAIScraperService {
 
                 6. ZWRÓĆ HTML
                 - Zwróć zmodyfikowany, czysty fragment HTML samej instrukcji przygotowania (bez znaczników <html>, <head>, <body> i bez bloków markdown ```html).
-                - Usuń elementy strony, które nie są potrzebne do przygotowania potrawy, np. reklamy, zbędne sekcje, długie wstępy i nieistotne elementy nawigacji.
+                - Usuń reklamy, zbędne sekcje, wstępy i nieistotną nawigację.
                 - Przygotuj czytelny, estetyczny i uporządkowany układ z numerowanymi krokami (<ol><li>...</li></ol>).
-                - Zadbaj o czytelność na komputerze i telefonie.
                 - Zachowaj poprawną strukturę HTML i polskie znaki.
                 - Nie zmieniaj samego dania ani jego charakteru.
 
@@ -148,16 +159,13 @@ public class RecipeAIScraperService {
                 Przed zakończeniem upewnij się, że:
                 - wszystkie istotne czynności zostały uwzględnione;
                 - kroki są ułożone we właściwej kolejności;
-                - ilości składników zgadzają się ze źródłem;
-                - każdy krok zawiera komplet informacji o składnikach używanych na danym etapie;
-                - czasy i temperatury nie zostały pominięte;
-                - nie dodano niepotwierdzonych informacji;
-                - przepis można wykonać bez konieczności ciągłego wracania do oryginalnego tekstu.
+                - wszędzie, gdzie dodawany jest składnik z listy, użyto zmiennej w klamrach (np. {ingredient1});
+                - czasy i temperatury nie zostały pominięte.
 
                 JEDYNY WYNIK KOŃCOWY:
                 HTML
 
-                --- UJEDNOLICONA LISTA SKŁADNIKÓW ---
+                --- UJEDNOLICONA LISTA SKŁADNIKÓW ZE ZMIENNYMI ---
                 %s
 
                 --- PEŁNA TREŚĆ PRZEPISU (ŹRÓDŁO INFORMACJI) ---
@@ -188,11 +196,13 @@ public class RecipeAIScraperService {
             List<ScrapedRecipeData.ScrapedIngredientLine> fallbackLines) {
         if (apiKey == null || apiKey.isBlank()) {
             log.info("OpenAI API key is not configured, using parsed ingredient lines without AI.");
+            ensureVariableNames(fallbackLines);
             return fallbackLines;
         }
 
         if ((rawIngredientsHtml == null || rawIngredientsHtml.isBlank())
                 && (fallbackLines == null || fallbackLines.isEmpty())) {
+            ensureVariableNames(fallbackLines);
             return fallbackLines;
         }
 
@@ -232,6 +242,32 @@ public class RecipeAIScraperService {
                      ["Nabiał", "Mięso", "Ryby", "Warzywa", "Owoce", "Przyprawy", "Zboża", "Pieczywo", "Tłuszcze", "Napoje", "Słodycze", "Słone Przekąski", "Suplementy", "Inne"].
                    - `optional`: `true`, jeśli składnik jest oznaczony jako opcjonalny / do podania, w przeciwnym razie `false`.
 
+                5. ROZBIJANIE ZBIORCZYCH LINII I ZESTAWÓW PRZYPRAW NA OSOBNE SKŁADNIKI (BARDZO WAŻNE):
+                   - W przepisach wiele przypraw lub składników bywa zapisanych razem w jednej linijce, oddzielonych średnikami, przecinkami lub słowami 'po', np.:
+                     * "przyprawy: 1 płaska łyżka garam masala; po płaskiej łyżeczce imbiru, soli, cukru, kuminu; po pół płaskiej łyżeczki chili i mielonej kolendry"
+                     * "przyprawy: 1 płaska łyżka garam masala; po 1/4 łyżeczki kuminu i soli; po sporej szczypcie chili i kurkumy"
+                     * "do smaku: sól, świeżo mielony pieprz, szczypta ostrej papryki"
+                   - W KAŻDYM takim przypadku MUSISZ utworzyć OSOBNY obiekt JSON dla KAŻDEJ wymienionej przyprawy/składnika!
+                   - BEZWZGLĘDNY ZAKAZ łączenia ich w jedną pozycję lub wybierania tylko jednej czy dwóch przypraw!
+                   - Zasada słowa 'po' (np. 'po płaskiej łyżeczce imbiru, soli, cukru, kuminu'):
+                     Słowo 'po' oznacza, że KAŻDY ze składników wymienionych po przecinku lub słowie 'i' otrzymuje TĘ SAMĄ podaną ilość i jednostkę!
+                     Np. dla 'po płaskiej łyżeczce imbiru, soli, cukru, kuminu' wygeneruj CZTERY osobne pozycje:
+                       * Imbir: quantity: 1.0, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                       * Sól: quantity: 1.0, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                       * Cukier: quantity: 1.0, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                       * Kumin: quantity: 1.0, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                     Dla 'po pół płaskiej łyżeczki chili i mielonej kolendry':
+                       * Chili: quantity: 0.5, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                       * Kolendra mielona: quantity: 0.5, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                     Dla '1 płaska łyżka garam masala':
+                       * Garam masala: quantity: 1.0, unitText: "łyżka", ingredientCategory: "Przyprawy"
+                     Dla 'po 1/4 łyżeczki kuminu i soli':
+                       * Kumin: quantity: 0.25, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                       * Sól: quantity: 0.25, unitText: "łyżeczka", ingredientCategory: "Przyprawy"
+                     Dla 'po sporej szczypcie chili i kurkumy':
+                       * Chili: quantity: 1.0, unitText: "szczypta", ingredientCategory: "Przyprawy"
+                       * Kurkuma: quantity: 1.0, unitText: "szczypta", ingredientCategory: "Przyprawy"
+
                 Zwróć WYŁĄCZNIE poprawną tablicę JSON (bez bloków markdown ```json), gdzie każdy obiekt ma pola:
                 [
                   {
@@ -262,6 +298,7 @@ public class RecipeAIScraperService {
                 String cleanedJson = stripMarkdownCodeBlock(aiResponse);
                 List<ScrapedRecipeData.ScrapedIngredientLine> aiLines = parseIngredientLinesJson(cleanedJson);
                 if (!aiLines.isEmpty()) {
+                    ensureVariableNames(aiLines);
                     log.info("Successfully unified {} ingredients via OpenAI", aiLines.size());
                     return aiLines;
                 }
@@ -271,7 +308,18 @@ public class RecipeAIScraperService {
         } catch (Exception e) {
             log.error("Failed to unify ingredients with OpenAI, falling back to local parser: " + e.getMessage(), e);
         }
+        ensureVariableNames(fallbackLines);
         return fallbackLines;
+    }
+
+    private void ensureVariableNames(List<ScrapedRecipeData.ScrapedIngredientLine> lines) {
+        if (lines == null) return;
+        for (int i = 0; i < lines.size(); i++) {
+            ScrapedRecipeData.ScrapedIngredientLine line = lines.get(i);
+            if (line != null && (line.getVariableName() == null || line.getVariableName().isBlank())) {
+                line.setVariableName("ingredient" + (i + 1));
+            }
+        }
     }
 
     private List<ScrapedRecipeData.ScrapedIngredientLine> parseIngredientLinesJson(String json) throws Exception {
@@ -298,6 +346,10 @@ public class RecipeAIScraperService {
                 String category = textOrNull(node, "category");
                 String ingredientCategory = textOrNull(node, "ingredientCategory");
                 Boolean optional = node.hasNonNull("optional") && node.get("optional").asBoolean(false);
+                String variableName = textOrNull(node, "variableName");
+                if (variableName == null || variableName.isBlank()) {
+                    variableName = "ingredient" + (result.size() + 1);
+                }
 
                 result.add(ScrapedRecipeData.ScrapedIngredientLine.builder()
                         .originalText(originalText != null ? originalText : ingredientText)
@@ -307,6 +359,7 @@ public class RecipeAIScraperService {
                         .category(category)
                         .ingredientCategory(ingredientCategory)
                         .optional(optional)
+                        .variableName(variableName)
                         .build());
             }
         }

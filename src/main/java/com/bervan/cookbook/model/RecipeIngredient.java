@@ -37,6 +37,9 @@ public class RecipeIngredient extends BervanOwnedBaseEntity<UUID> implements Exc
     @Size(max = 300)
     private String originalText;
 
+    @Size(max = 100)
+    private String variableName;
+
     private boolean deleted;
     private LocalDateTime modificationDate;
 
@@ -125,5 +128,13 @@ public class RecipeIngredient extends BervanOwnedBaseEntity<UUID> implements Exc
 
     public void setOriginalText(String originalText) {
         this.originalText = originalText;
+    }
+
+    public String getVariableName() {
+        return variableName;
+    }
+
+    public void setVariableName(String variableName) {
+        this.variableName = variableName;
     }
 }
