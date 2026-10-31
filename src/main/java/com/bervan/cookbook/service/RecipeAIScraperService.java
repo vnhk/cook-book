@@ -104,30 +104,25 @@ public class RecipeAIScraperService {
                 - Zachowaj prawidłową kolejność wykonywania czynności.
                 - Pisz zwięźle, prostym i naturalnym językiem.
 
-                2. UŻYWAJ ZMIENNYCH DLA ILOŚCI SKŁADNIKÓW W KAŻDYM KROKU
-                To najważniejsza zasada. Aplikacja posiada funkcję dynamicznego skalowania porcji (np. zmiana liczby porcji w górę lub w dół), która automatycznie przelicza wartości zmiennych w instrukcji.
-                Dlatego za każdym razem, gdy w danym kroku pojawia się składnik z listy, ZAMIAST wpisywać na sztywno liczbę i jednostkę, WSTAW ZMIENNĄ W NAWIASACH KLAMROWYCH {nazwa_zmiennej} (np. {ingredient1}, {ingredient2}).
-                Zmienna ta zastępuje samą ilość i jednostkę (w aplikacji zostanie dynamicznie wyświetlona jako np. „400 g”, a przy podwojeniu porcji jako „800 g”).
+                2. UŻYWAJ ZMIENNYCH SKŁADNIKÓW W KAŻDYM KROKU
+                To najważniejsza zasada. Aplikacja dynamicznie przelicza porcje i ilości składników.
+                Dlatego za każdym razem, gdy w danym kroku pojawia się składnik z listy, WSTAW ZMIENNĄ W NAWIASACH KLAMROWYCH {nazwa_zmiennej} (np. {ingredient1}, {ingredient2}).
 
-                Nie pisz ogólnie:
-                „Dodaj ziemniaki do garnka”.
-                Nie pisz ze sztywną liczbą:
-                „Dodaj 400 g obranych i pokrojonych w kostkę ziemniaków”.
-                Napisz ze zmienną:
-                „Dodaj {ingredient1} obranych i pokrojonych w kostkę ziemniaków”.
+                W aplikacji zmienne działają następująco:
+                - {ingredient1} -> automatycznie wstawia przeliczoną ilość, jednostkę i nazwę składnika (np. „2400 g Kurczak”, „100 g Śmietanka”).
+                - {ingredient1.name} -> wstawia samą nazwę składnika (np. „Śmietanka”).
+                - {ingredient1.quantity} -> wstawia samą przeliczoną ilość i jednostkę (np. „100 g”).
 
-                Nie pisz:
-                „Dodaj czosnek i przyprawy”.
-                Nie pisz ze sztywną liczbą:
-                „Dodaj 2 ząbki drobno posiekanego czosnku i 1 płaską łyżeczkę soli”.
-                Napisz ze zmiennymi:
-                „Dodaj {ingredient2} drobno posiekanego czosnku i {ingredient3} soli”.
+                Przykłady użycia:
+                - „Oczyść {ingredient1} z żyłek i pokrój na kawałki...” (zostanie wyświetlone jako „Oczyść 2400 g Kurczak z żyłek...”)
+                - „Do miski dodaj {ingredient2}, {ingredient3} drobno posiekany, {ingredient4} i {ingredient5}...”
+                - „Na patelni rozgrzej {ingredient6}. Dodaj {ingredient7} pokrojoną w kostkę...”
+                - „Wlej {ingredient8} do patelni, wymieszaj i gotuj przez 5 minut...”
 
                 Każdy krok ma zawierać wszystkie informacje potrzebne do wykonania opisanej czynności:
-                - zmienną reprezentującą ilość i jednostkę (np. {ingredient1});
-                - zachowaj nazwę składnika w odpowiedniej formie gramatycznej po zmiennej;
+                - zmienną reprezentującą składnik (np. {ingredient1});
                 - formę przygotowania, np. obrany, pokrojony w kostkę, starty lub posiekany;
-                - dodatkowe informacje istotne dla przygotowania, np. temperatura, rodzaj produktu lub sposób wcześniejszej obróbki.
+                - dodatkowe informacje istotne dla przygotowania, np. temperatura, czas lub sposób obróbki.
                 Użyj dokładnie nazw zmiennych podanych w sekcji --- UJEDNOLICONA LISTA SKŁADNIKÓW ZE ZMIENNYMI ---.
 
                 3. ZACHOWAJ CZASY I PARAMETRY PRZYGOTOWANIA
